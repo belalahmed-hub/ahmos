@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://belalahmed-hub.github.io/ahmos/sitemap.xml
