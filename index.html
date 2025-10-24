@@ -1,0 +1,4548 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AHMOS - نظام إدارة الصيدلية المتكامل</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+    
+    <!-- تضمين مكتبة SheetJS للعمل مع ملفات Excel -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    
+    <style>
+        :root {
+            --primary: #4361ee;
+            --primary-dark: #3a56d4;
+            --primary-light: #4895ef;
+            --secondary: #7209b7;
+            --success: #4cc9f0;
+            --info: #4895ef;
+            --warning: #f72585;
+            --danger: #e63946;
+            --dark: #1d3557;
+            --light: #f1faee;
+            --gray-100: #f8f9fa;
+            --gray-200: #e9ecef;
+            --gray-300: #dee2e6;
+            --gray-400: #ced4da;
+            --gray-500: #adb5bd;
+            --gray-600: #6c757d;
+            --gray-700: #495057;
+            --gray-800: #343a40;
+            --gray-900: #212529;
+            
+            --border-radius: 12px;
+            --border-radius-sm: 8px;
+            --border-radius-lg: 16px;
+            --shadow-sm: 0 2px 4px rgba(0,0,0,0.1);
+            --shadow: 0 4px 6px rgba(0,0,0,0.1);
+            --shadow-md: 0 6px 10px rgba(0,0,0,0.1);
+            --shadow-lg: 0 10px 15px rgba(0,0,0,0.1);
+            
+            --transition: all 0.3s ease;
+            --transition-fast: all 0.15s ease;
+        }
+
+        .theme-light {
+            --bg-primary: #f8f9fa;
+            --bg-secondary: #ffffff;
+            --text-primary: #212529;
+            --text-secondary: #6c757d;
+            --border-color: #dee2e6;
+            --card-bg: #ffffff;
+        }
+
+        .theme-medium {
+            --bg-primary: #e9ecef;
+            --bg-secondary: #f8f9fa;
+            --text-primary: #343a40;
+            --text-secondary: #495057;
+            --border-color: #ced4da;
+            --card-bg: #f8f9fa;
+        }
+
+        .theme-dark {
+            --bg-primary: #121212;
+            --bg-secondary: #1e1e1e;
+            --text-primary: #ffffff;
+            --text-secondary: #b0b0b0;
+            --border-color: #333333;
+            --card-bg: #1e1e1e;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Tajawal', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+            transition: var(--transition);
+        }
+
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            position: fixed;
+            top: 0;
+            right: -320px;
+            width: 300px;
+            height: 100vh;
+            background: linear-gradient(180deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 1.5rem 1rem;
+            transition: var(--transition);
+            box-shadow: var(--shadow-lg);
+            z-index: 1000;
+            overflow-y: auto;
+            border-top-left-radius: 20px;
+            border-bottom-left-radius: 20px;
+        }
+
+        .sidebar.active {
+            right: 0;
+        }
+
+        .sidebar-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            display: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .sidebar-overlay.active {
+            display: block;
+            opacity: 1;
+        }
+
+        .sidebar-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .logo-icon {
+            font-size: 1.75rem;
+            background: rgba(255,255,255,0.1);
+            padding: 0.5rem;
+            border-radius: 12px;
+        }
+
+        .logo-text {
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        .toggle-sidebar {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.25rem;
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 8px;
+            transition: var(--transition);
+        }
+
+        .toggle-sidebar:hover {
+            background: rgba(255,255,255,0.1);
+        }
+
+        .nav-menu {
+            list-style: none;
+        }
+
+        .nav-item {
+            margin-bottom: 0.5rem;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.875rem 1rem;
+            color: rgba(255,255,255,0.8);
+            text-decoration: none;
+            border-radius: var(--border-radius);
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            background: rgba(255,255,255,0.1);
+            color: white;
+            transform: translateX(-5px);
+        }
+
+        .nav-link::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: -10px;
+            width: 4px;
+            height: 100%;
+            background: rgba(255,255,255,0.5);
+            border-radius: 2px;
+            transition: var(--transition);
+        }
+
+        .nav-link.active::before {
+            right: 0;
+            background: white;
+        }
+
+        .nav-icon {
+            font-size: 1.25rem;
+            width: 24px;
+            text-align: center;
+        }
+
+        .sidebar-toggle-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            cursor: pointer;
+            z-index: 900;
+            box-shadow: var(--shadow-lg);
+            transition: var(--transition);
+        }
+
+        .sidebar-toggle-btn:hover {
+            background: var(--primary-dark);
+            transform: scale(1.1);
+            box-shadow: 0 8px 20px rgba(67, 97, 238, 0.4);
+        }
+
+        .sidebar-toggle-btn.active {
+            transform: rotate(90deg);
+            background: var(--primary-dark);
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            width: 100%;
+            transition: var(--transition);
+        }
+
+        .top-bar {
+            background: var(--bg-secondary);
+            padding: 1rem 1.5rem;
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 99;
+            transition: var(--transition);
+        }
+
+        .page-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .user-actions {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .search-box {
+            position: relative;
+            width: 300px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 0.75rem 1rem 0.75rem 2.5rem;
+            border: 1px solid var(--border-color);
+            border-radius: 30px;
+            background: var(--bg-secondary);
+            transition: var(--transition);
+            color: var(--text-primary);
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--gray-500);
+        }
+
+        .notification-btn, .user-btn, .theme-btn {
+            background: none;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--gray-600);
+            cursor: pointer;
+            transition: var(--transition);
+            position: relative;
+        }
+
+        .notification-btn:hover, .user-btn:hover, .theme-btn:hover {
+            background: var(--gray-100);
+            color: var(--primary);
+        }
+
+        .notification-badge {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: var(--danger);
+            color: white;
+            font-size: 0.7rem;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .content-area {
+            flex: 1;
+            padding: 1.5rem;
+            overflow-y: auto;
+            transition: var(--transition);
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--shadow);
+            margin-bottom: 1.5rem;
+            overflow: hidden;
+            transition: var(--transition);
+            border: 1px solid var(--border-color);
+        }
+
+        .card:hover {
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+        }
+
+        .card-header {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .card-body {
+            padding: 1.5rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .stat-card {
+            background: var(--card-bg);
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            box-shadow: var(--shadow-sm);
+            border-left: 4px solid var(--primary);
+            transition: var(--transition);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow);
+        }
+
+        .stat-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.75rem;
+            color: white;
+        }
+
+        .stat-info {
+            flex: 1;
+        }
+
+        .stat-value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+            color: var(--text-primary);
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .stat-change {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-size: 0.8rem;
+            margin-top: 0.25rem;
+        }
+
+        .stat-change.positive {
+            color: var(--success);
+        }
+
+        .stat-change.negative {
+            color: var(--danger);
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 0.875rem 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            font-size: 1rem;
+            transition: var(--transition);
+            font-family: inherit;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.875rem 1.5rem;
+            border: none;
+            border-radius: var(--border-radius);
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #3ab0d9;
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c1121f;
+            transform: translateY(-2px);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--primary);
+            color: var(--primary);
+        }
+
+        .btn-outline:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-sm {
+            padding: 0.5rem 1rem;
+            font-size: 0.8rem;
+        }
+
+        .btn-block {
+            display: block;
+            width: 100%;
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .table th, .table td {
+            padding: 1rem;
+            text-align: right;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-primary);
+        }
+
+        .table th {
+            background: var(--bg-primary);
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .table tr:hover {
+            background: var(--bg-primary);
+        }
+
+        .alert {
+            padding: 1rem 1.25rem;
+            border-radius: var(--border-radius);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .alert-success {
+            background: rgba(76, 201, 240, 0.1);
+            color: var(--success);
+            border: 1px solid rgba(76, 201, 240, 0.2);
+        }
+
+        .alert-danger {
+            background: rgba(230, 57, 70, 0.1);
+            color: var(--danger);
+            border: 1px solid rgba(230, 57, 70, 0.2);
+        }
+
+        .alert-warning {
+            background: rgba(247, 37, 133, 0.1);
+            color: var(--warning);
+            border: 1px solid rgba(247, 37, 133, 0.2);
+        }
+
+        .alert-info {
+            background: rgba(67, 97, 238, 0.1);
+            color: var(--primary);
+            border: 1px solid rgba(67, 97, 238, 0.2);
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 1.5rem;
+        }
+
+        .tab {
+            padding: 1rem 1.5rem;
+            background: none;
+            border: none;
+            border-bottom: 2px solid transparent;
+            font-weight: 600;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .section {
+            display: none;
+        }
+
+        .section.active {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .status-success {
+            background: rgba(76, 201, 240, 0.1);
+            color: var(--success);
+        }
+
+        .status-warning {
+            background: rgba(247, 37, 133, 0.1);
+            color: var(--warning);
+        }
+
+        .status-danger {
+            background: rgba(230, 57, 70, 0.1);
+            color: var(--danger);
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-bottom: 1.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .app-container {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 280px;
+                border-radius: 0;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .search-box {
+                width: 200px;
+            }
+            
+            .medicines-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .sidebar-toggle-btn {
+                width: 50px;
+                height: 50px;
+                font-size: 1.25rem;
+            }
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(67, 97, 238, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(67, 97, 238, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(67, 97, 238, 0); }
+        }
+
+        .shake {
+            animation: shake 0.5s;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+
+        .progress {
+            height: 8px;
+            background: var(--gray-200);
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 0.5rem 0;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: var(--primary);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+
+        .filter-bar {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .medicines-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .medicine-card {
+            background: var(--card-bg);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            padding: 1.5rem;
+            cursor: pointer;
+            transition: var(--transition);
+            border-left: 4px solid var(--primary);
+            position: relative;
+            border: 1px solid var(--border-color);
+        }
+
+        .medicine-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .medicine-card.expired {
+            border-left-color: var(--danger);
+        }
+
+        .medicine-card.low-stock {
+            border-left-color: var(--warning);
+        }
+
+        .medicine-card.critical {
+            animation: pulse 2s infinite;
+        }
+
+        .medicine-name {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .medicine-concentration {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .medicine-status {
+            position: absolute;
+            top: 1rem;
+            left: 1rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            padding: 1rem;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .modal-content {
+            background: var(--card-bg);
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--shadow-lg);
+            width: 100%;
+            max-width: 800px;
+            max-height: 90vh;
+            overflow-y: auto;
+            animation: slideUp 0.3s ease;
+            border: 1px solid var(--border-color);
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--primary);
+            color: white;
+            border-radius: var(--border-radius-lg) var(--border-radius-lg) 0 0;
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+        }
+
+        .modal-close:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .medicine-details-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .detail-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            background: var(--bg-primary);
+            border-radius: var(--border-radius);
+            border-left: 3px solid var(--primary);
+        }
+
+        .detail-item .label {
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .detail-item .value {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .toggle-group {
+            margin-bottom: 1rem;
+        }
+
+        .toggle-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            padding: 0.75rem 1rem;
+            background: var(--bg-primary);
+            border-radius: var(--border-radius);
+            border: 1px solid var(--border-color);
+            transition: var(--transition);
+        }
+
+        .toggle-label:hover {
+            background: var(--bg-secondary);
+        }
+
+        .toggle-text {
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            width: 100px;
+            height: 36px;
+            background: var(--gray-300);
+            border-radius: 25px;
+            transition: var(--transition);
+            cursor: pointer;
+        }
+
+        .toggle-input {
+            display: none;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 44px;
+            height: 30px;
+            background: white;
+            border-radius: 25px;
+            transition: var(--transition);
+            box-shadow: var(--shadow-sm);
+            z-index: 2;
+        }
+
+        .toggle-yes, .toggle-no {
+            position: absolute;
+            font-size: 0.8rem;
+            font-weight: 600;
+            transition: var(--transition);
+            z-index: 1;
+        }
+
+        .toggle-yes {
+            right: 12px;
+            color: var(--success);
+            opacity: 0;
+        }
+
+        .toggle-no {
+            left: 12px;
+            color: var(--danger);
+        }
+
+        .toggle-input:checked + .toggle-slider {
+            transform: translateX(50px);
+            background: var(--success);
+        }
+
+        .toggle-input:checked ~ .toggle-yes {
+            opacity: 1;
+        }
+
+        .toggle-input:checked ~ .toggle-no {
+            opacity: 0;
+        }
+
+        .toggle-input:checked ~ .toggle-slider {
+            background: var(--success);
+        }
+
+        .stock-quantity-container {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: var(--bg-primary);
+            border-radius: var(--border-radius);
+            border: 1px solid var(--border-color);
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .export-import-section {
+            background: var(--card-bg);
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+        }
+
+        .export-import-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .export-import-card {
+            background: var(--bg-primary);
+            border-radius: var(--border-radius);
+            padding: 1rem;
+            text-align: center;
+            border: 2px dashed var(--border-color);
+            transition: var(--transition);
+        }
+
+        .export-import-card:hover {
+            border-color: var(--primary);
+            background: var(--bg-secondary);
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .file-label {
+            display: inline-block;
+            padding: 0.75rem 1.5rem;
+            background: var(--primary);
+            color: white;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: var(--transition);
+            margin-top: 0.5rem;
+        }
+
+        .file-label:hover {
+            background: var(--primary-dark);
+        }
+
+        .theme-selector {
+            position: relative;
+        }
+
+        .theme-options {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: var(--card-bg);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-lg);
+            padding: 0.5rem;
+            display: none;
+            flex-direction: column;
+            gap: 0.5rem;
+            min-width: 150px;
+            z-index: 1000;
+            border: 1px solid var(--border-color);
+        }
+
+        .theme-options.active {
+            display: flex;
+        }
+
+        .theme-option {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .theme-option:hover {
+            background: var(--bg-primary);
+        }
+
+        .theme-preview {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid var(--border-color);
+        }
+
+        .theme-light-preview {
+            background: #f8f9fa;
+        }
+
+        .theme-medium-preview {
+            background: #e9ecef;
+        }
+
+        .theme-dark-preview {
+            background: #121212;
+        }
+
+        .auto-save {
+            position: fixed;
+            bottom: 1rem;
+            right: 1rem;
+            background: var(--success);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            box-shadow: var(--shadow);
+            display: none;
+            align-items: center;
+            gap: 0.5rem;
+            z-index: 1001;
+            animation: slideInRight 0.3s ease;
+        }
+        
+        @keyframes slideInRight {
+            from { opacity: 0; transform: translateX(100%); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .notifications-panel {
+            position: fixed;
+            top: 70px;
+            left: 20px;
+            width: 350px;
+            max-height: 400px;
+            background: var(--card-bg);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-lg);
+            z-index: 1000;
+            display: none;
+            flex-direction: column;
+            border: 1px solid var(--border-color);
+        }
+
+        .notifications-panel.active {
+            display: flex;
+        }
+
+        .notifications-header {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-primary);
+        }
+
+        .notifications-list {
+            flex: 1;
+            overflow-y: auto;
+            max-height: 300px;
+        }
+
+        .notification-item {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .notification-item:hover {
+            background: var(--bg-primary);
+        }
+
+        .notification-item.unread {
+            background: rgba(67, 97, 238, 0.1);
+            border-right: 4px solid var(--primary);
+        }
+
+        .notification-title {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .notification-time {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .notification-message {
+            font-size: 0.9rem;
+            color: var(--text-primary);
+        }
+
+        .offline-alert {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: var(--warning);
+            color: white;
+            padding: 1rem;
+            text-align: center;
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            box-shadow: var(--shadow);
+        }
+
+        .offline-alert.active {
+            display: flex;
+            animation: slideDown 0.3s ease;
+        }
+
+        .close-offline-alert {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.25rem;
+            cursor: pointer;
+            padding: 0.25rem;
+            border-radius: 4px;
+            transition: var(--transition);
+        }
+
+        .close-offline-alert:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .connection-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            margin-right: 1rem;
+        }
+
+        .connection-indicator.online {
+            background: rgba(76, 201, 240, 0.1);
+            color: var(--success);
+        }
+
+        .connection-indicator.offline {
+            background: rgba(230, 57, 70, 0.1);
+            color: var(--danger);
+        }
+
+        .connection-status {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .connection-status.online {
+            background: var(--success);
+            box-shadow: 0 0 5px var(--success);
+        }
+
+        .connection-status.offline {
+            background: var(--danger);
+            box-shadow: 0 0 5px var(--danger);
+        }
+
+        .quantity-split {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .quantity-split .form-group {
+            flex: 1;
+            margin-bottom: 0;
+        }
+
+        .strips-count-container {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: var(--bg-primary);
+            border-radius: var(--border-radius);
+            border: 1px solid var(--border-color);
+            animation: slideDown 0.3s ease;
+        }
+    </style>
+</head>
+<body class="theme-light">
+    <button class="sidebar-toggle-btn" id="sidebar-toggle">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <div class="app-container">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <div class="logo-icon">
+                        <i class="fas fa-pills"></i>
+                    </div>
+                    <div class="logo-text">AHMOS</div>
+                </div>
+                <button class="toggle-sidebar" id="close-sidebar">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <ul class="nav-menu">
+                <li class="nav-item">
+                    <a href="#" class="nav-link active" data-section="dashboard">
+                        <i class="fas fa-home nav-icon"></i>
+                        <span class="nav-text">لوحة التحكم</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link" data-section="add-medicine">
+                        <i class="fas fa-plus-circle nav-icon"></i>
+                        <span class="nav-text">إضافة دواء جديد</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link" data-section="manage-medicines">
+                        <i class="fas fa-pills nav-icon"></i>
+                        <span class="nav-text">إدارة الأدوية</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link" data-section="statistics">
+                        <i class="fas fa-chart-bar nav-icon"></i>
+                        <span class="nav-text">الإحصائيات</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link" data-section="categories">
+                        <i class="fas fa-tags nav-icon"></i>
+                        <span class="nav-text">التصنيفات</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link" data-section="units">
+                        <i class="fas fa-ruler nav-icon"></i>
+                        <span class="nav-text">وحدات القياس</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link" data-section="alerts">
+                        <i class="fas fa-bell nav-icon"></i>
+                        <span class="nav-text">التنبيهات</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link" data-section="shortages">
+                        <i class="fas fa-exclamation-triangle nav-icon"></i>
+                        <span class="nav-text">النواقص</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link" data-section="settings">
+                        <i class="fas fa-cog nav-icon"></i>
+                        <span class="nav-text">الإعدادات</span>
+                    </a>
+                </li>
+            </ul>
+        </aside>
+
+        <main class="main-content">
+            <header class="top-bar">
+                <h1 class="page-title" id="page-title">لوحة التحكم</h1>
+                
+                <div class="user-actions">
+                    <div class="connection-indicator offline" id="connection-indicator">
+                        <span class="connection-status offline"></span>
+                        <span>غير متصل</span>
+                    </div>
+                    
+                    <div class="search-box">
+                        <i class="fas fa-search search-icon"></i>
+                        <input type="text" placeholder="بحث في النظام..." id="global-search">
+                    </div>
+                    
+                    <div class="theme-selector">
+                        <button class="theme-btn" id="theme-btn">
+                            <i class="fas fa-palette"></i>
+                        </button>
+                        <div class="theme-options" id="theme-options">
+                            <div class="theme-option" data-theme="light">
+                                <div class="theme-preview theme-light-preview"></div>
+                                <span>فاتح</span>
+                            </div>
+                            <div class="theme-option" data-theme="medium">
+                                <div class="theme-preview theme-medium-preview"></div>
+                                <span>متوسط</span>
+                            </div>
+                            <div class="theme-option" data-theme="dark">
+                                <div class="theme-preview theme-dark-preview"></div>
+                                <span>غامق</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button class="notification-btn" id="notification-btn">
+                        <i class="fas fa-bell"></i>
+                        <span class="notification-badge">0</span>
+                    </button>
+                    
+                    <button class="user-btn">
+                        <i class="fas fa-user"></i>
+                    </button>
+                </div>
+            </header>
+
+            <div class="notifications-panel" id="notifications-panel">
+                <div class="notifications-header">
+                    <h3 style="margin: 0;">الإشعارات</h3>
+                    <button class="btn btn-sm btn-outline" id="clear-notifications">
+                        مسح الكل
+                    </button>
+                </div>
+                <div class="notifications-list" id="notifications-list">
+                    <!-- سيتم ملء الإشعارات ديناميكياً -->
+                </div>
+            </div>
+
+            <div class="content-area">
+                <!-- قسم لوحة التحكم -->
+                <section id="dashboard" class="section active">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon" style="background: var(--primary);">
+                                <i class="fas fa-pills"></i>
+                            </div>
+                            <div class="stat-info">
+                                <div class="stat-value" id="total-medicines">0</div>
+                                <div class="stat-label">إجمالي الأدوية</div>
+                                <div class="stat-change positive">
+                                    <i class="fas fa-arrow-up"></i>
+                                    <span>5.2%</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-icon" style="background: var(--success);">
+                                <i class="fas fa-box"></i>
+                            </div>
+                            <div class="stat-info">
+                                <div class="stat-value" id="available-medicines">0</div>
+                                <div class="stat-label">أدوية متاحة</div>
+                                <div class="stat-change positive">
+                                    <i class="fas fa-arrow-up"></i>
+                                    <span>2.1%</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-icon" style="background: var(--warning);">
+                                <i class="fas fa-exclamation-triangle"></i>
+                            </div>
+                            <div class="stat-info">
+                                <div class="stat-value" id="low-stock-medicines">0</div>
+                                <div class="stat-label">أدوية منخفضة</div>
+                                <div class="stat-change negative">
+                                    <i class="fas fa-arrow-up"></i>
+                                    <span>3.4%</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-icon" style="background: var(--danger);">
+                                <i class="fas fa-calendar-times"></i>
+                            </div>
+                            <div class="stat-info">
+                                <div class="stat-value" id="expired-medicines">0</div>
+                                <div class="stat-label">منتهية الصلاحية</div>
+                                <div class="stat-change negative">
+                                    <i class="fas fa-arrow-up"></i>
+                                    <span>1.2%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">
+                                <i class="fas fa-chart-line"></i>
+                                نظرة عامة على المخزون
+                            </h2>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="inventoryChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">
+                                <i class="fas fa-exclamation-circle"></i>
+                                الأدوية التي تحتاج انتباه
+                            </h2>
+                        </div>
+                        <div class="card-body">
+                            <div id="attention-medicines">
+                                <!-- سيتم ملؤها ديناميكياً -->
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- قسم إضافة دواء جديد -->
+                <section id="add-medicine" class="section">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">
+                                <i class="fas fa-plus-circle"></i>
+                                إضافة دواء جديد
+                            </h2>
+                        </div>
+                        <div class="card-body">
+                            <form id="medicine-form">
+                                <div class="form-group">
+                                    <label for="medicine-name" class="form-label">
+                                        <i class="fas fa-pills"></i> اسم الدواء
+                                    </label>
+                                    <input type="text" id="medicine-name" class="form-control" required placeholder="أدخل اسم الدواء">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="active-ingredient" class="form-label">
+                                        <i class="fas fa-flask"></i> المادة الفعالة
+                                    </label>
+                                    <input type="text" id="active-ingredient" class="form-control" required placeholder="أدخل المادة الفعالة">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="concentration" class="form-label">
+                                        <i class="fas fa-weight"></i> التركيز
+                                    </label>
+                                    <input type="text" id="concentration" class="form-control" required placeholder="أدخل التركيز">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="category" class="form-label">
+                                        <i class="fas fa-tag"></i> التصنيف
+                                    </label>
+                                    <select id="category" class="form-control" required>
+                                        <option value="">اختر التصنيف</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="unit" class="form-label">
+                                        <i class="fas fa-box"></i> وحدة القياس
+                                    </label>
+                                    <select id="unit" class="form-control" required>
+                                        <option value="">اختر وحدة القياس</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="price" class="form-label">
+                                        <i class="fas fa-money-bill"></i> السعر
+                                    </label>
+                                    <input type="number" id="price" class="form-control" min="0" step="0.01" required placeholder="أدخل السعر">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="expiry-date" class="form-label">
+                                        <i class="fas fa-calendar-alt"></i> تاريخ الصلاحية
+                                    </label>
+                                    <input type="date" id="expiry-date" class="form-control" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="required-quantity" class="form-label">
+                                        <i class="fas fa-calculator"></i> الكمية المطلوبة
+                                    </label>
+                                    <input type="number" id="required-quantity" class="form-control" min="0" required placeholder="أدخل الكمية المطلوبة">
+                                </div>
+                                
+                                <!-- الكمية الحالية مقسمة إلى عدد العلب وعدد الأجزاء -->
+                                <div class="form-group">
+                                    <label class="form-label">
+                                        <i class="fas fa-boxes"></i> الكمية الحالية
+                                    </label>
+                                    <div class="quantity-split">
+                                        <div class="form-group">
+                                            <label for="current-boxes" class="form-label">عدد العلب</label>
+                                            <input type="number" id="current-boxes" class="form-control" min="0" required placeholder="عدد العلب">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="current-pieces" class="form-label">عدد الأجزاء</label>
+                                            <input type="number" id="current-pieces" class="form-control" min="0" required placeholder="عدد الأجزاء">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="min-alert" class="form-label">
+                                        <i class="fas fa-exclamation-triangle"></i> الحد الأدنى للإنذار
+                                    </label>
+                                    <input type="number" id="min-alert" class="form-control" min="0" required placeholder="أدخل الحد الأدنى للإنذار">
+                                </div>
+                                
+                                <!-- حقل عدد الشرايط (يظهر فقط لتصنيفات معينة) -->
+                                <div class="strips-count-container" id="strips-count-container" style="display: none;">
+                                    <label for="strips-count" class="form-label">
+                                        <i class="fas fa-layer-group"></i> عدد الشرايط
+                                    </label>
+                                    <input type="number" id="strips-count" class="form-control" min="0" placeholder="أدخل عدد الشرايط">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <div class="toggle-group">
+                                        <label class="toggle-label">
+                                            <span class="toggle-text">
+                                                <i class="fas fa-atom"></i> متوفر منه مخزون
+                                            </span>
+                                            <div class="toggle-switch">
+                                                <input type="checkbox" id="has-stock" class="toggle-input">
+                                                <span class="toggle-slider"></span>
+                                                <span class="toggle-yes">نعم</span>
+                                                <span class="toggle-no">لا</span>
+                                            </div>
+                                        </label>
+                                    </div>
+                                    
+                                    <div id="stock-quantity-container" class="stock-quantity-container" style="display: none;">
+                                        <label for="stock-quantity" class="form-label">
+                                            <i class="fas fa-boxes"></i> كمية المخزون
+                                        </label>
+                                        <input type="number" id="stock-quantity" class="form-control" min="0" placeholder="أدخل كمية المخزون المتوفرة">
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <div class="toggle-group">
+                                        <label class="toggle-label">
+                                            <span class="toggle-text">
+                                                <i class="fas fa-star"></i> حالة الصنف مهم
+                                            </span>
+                                            <div class="toggle-switch">
+                                                <input type="checkbox" id="is-important" class="toggle-input">
+                                                <span class="toggle-slider"></span>
+                                                <span class="toggle-yes">نعم</span>
+                                                <span class="toggle-no">لا</span>
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
+                                
+                                <button type="submit" class="btn btn-primary btn-block">
+                                    <i class="fas fa-save"></i> حفظ الدواء
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    <div id="form-message"></div>
+                </section>
+
+                <!-- قسم إدارة الأدوية -->
+                <section id="manage-medicines" class="section">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">
+                                <i class="fas fa-pills"></i>
+                                إدارة الأدوية
+                            </h2>
+                            <button class="btn btn-primary" id="add-medicine-btn">
+                                <i class="fas fa-plus"></i>
+                                إضافة دواء جديد
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div class="filter-bar">
+                                <div class="filter-group">
+                                    <label class="form-label">بحث:</label>
+                                    <input type="text" class="form-control" id="medicine-search" placeholder="ابحث باسم الدواء، المادة الفعالة، التركيز...">
+                                </div>
+                                <div class="filter-group">
+                                    <label class="form-label">التصنيف:</label>
+                                    <select class="form-control" id="category-filter">
+                                        <option value="">جميع التصنيفات</option>
+                                    </select>
+                                </div>
+                                <div class="filter-group">
+                                    <label class="form-label">الترتيب:</label>
+                                    <select class="form-control" id="sort-option">
+                                        <option value="name-asc">A → Z حسب الاسم</option>
+                                        <option value="name-desc">Z → A حسب الاسم</option>
+                                        <option value="date-newest">الأحدث أولاً</option>
+                                        <option value="quantity-low">الأقل كمية أولاً</option>
+                                        <option value="expiry-soon">الأقرب انتهاءً أولاً</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <!-- قسم الاستيراد والتصدير للأدوية -->
+                            <div class="export-import-section">
+                                <h3><i class="fas fa-file-excel"></i> التصدير والاستيراد - Excel</h3>
+                                <div class="export-import-grid">
+                                    <div class="export-import-card">
+                                        <h4>تصدير الأدوية</h4>
+                                        <p>تصدير جميع الأدوية إلى ملف Excel</p>
+                                        <button id="export-medicines-excel" class="btn btn-success">
+                                            <i class="fas fa-file-export"></i> تصدير إلى Excel
+                                        </button>
+                                    </div>
+                                    
+                                    <div class="export-import-card">
+                                        <h4>استيراد الأدوية</h4>
+                                        <p>استيراد الأدوية من ملف Excel</p>
+                                        <input type="file" id="import-medicines-excel" accept=".xlsx, .xls" class="file-input">
+                                        <label for="import-medicines-excel" class="file-label">
+                                            <i class="fas fa-file-import"></i> اختيار ملف Excel
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="medicines-grid" id="medicines-grid">
+                                <!-- سيتم ملؤها ديناميكياً -->
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- قسم الإحصائيات -->
+                <section id="statistics" class="section">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">
+                                <i class="fas fa-chart-bar"></i>
+                                الإحصائيات الشاملة
+                            </h2>
+                        </div>
+                        <div class="card-body">
+                            <div class="stats-grid">
+                                <div class="stat-card">
+                                    <div class="stat-icon" style="background: var(--primary);">
+                                        <i class="fas fa-pills"></i>
+                                    </div>
+                                    <div class="stat-info">
+                                        <div class="stat-value" id="total-medicines-stat">0</div>
+                                        <div class="stat-label">إجمالي الأدوية</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="stat-card">
+                                    <div class="stat-icon" style="background: var(--warning);">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                    </div>
+                                    <div class="stat-info">
+                                        <div class="stat-value" id="expired-medicines-stat">0</div>
+                                        <div class="stat-label">أدوية منتهية الصلاحية</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="stat-card">
+                                    <div class="stat-icon" style="background: var(--success);">
+                                        <i class="fas fa-box"></i>
+                                    </div>
+                                    <div class="stat-info">
+                                        <div class="stat-value" id="low-stock-medicines-stat">0</div>
+                                        <div class="stat-label">أدوية منخفضة المخزون</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="stat-card">
+                                    <div class="stat-icon" style="background: var(--info);">
+                                        <i class="fas fa-tags"></i>
+                                    </div>
+                                    <div class="stat-info">
+                                        <div class="stat-value" id="total-categories-stat">0</div>
+                                        <div class="stat-label">التصنيفات</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- قسم الاستيراد والتصدير للإحصائيات -->
+                            <div class="export-import-section">
+                                <h3><i class="fas fa-file-excel"></i> التصدير والاستيراد - Excel</h3>
+                                <div class="export-import-grid">
+                                    <div class="export-import-card">
+                                        <h4>تصدير الإحصائيات</h4>
+                                        <p>تصدير جميع الإحصائيات إلى ملف Excel</p>
+                                        <button id="export-statistics-excel" class="btn btn-success">
+                                            <i class="fas fa-file-export"></i> تصدير الإحصائيات
+                                        </button>
+                                    </div>
+                                    
+                                    <div class="export-import-card">
+                                        <h4>تصدير التقارير</h4>
+                                        <p>تصدير تقارير مفصلة إلى Excel</p>
+                                        <button id="export-reports-excel" class="btn btn-warning">
+                                            <i class="fas fa-chart-line"></i> تصدير التقارير
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="chart-container">
+                                <canvas id="statisticsChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- قسم التصنيفات -->
+                <section id="categories" class="section">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">
+                                <i class="fas fa-tags"></i>
+                                إضافة تصنيف جديد
+                            </h2>
+                        </div>
+                        <div class="card-body">
+                            <form id="category-form">
+                                <div class="form-group">
+                                    <label for="category-name" class="form-label">
+                                        <i class="fas fa-tag"></i> اسم التصنيف
+                                    </label>
+                                    <input type="text" id="category-name" class="form-control" required placeholder="أدخل اسم التصنيف">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="category-color" class="form-label">
+                                        <i class="fas fa-palette"></i> لون التصنيف
+                                    </label>
+                                    <input type="color" id="category-color" class="form-control" value="#4361ee" required>
+                                </div>
+                                
+                                <button type="submit" class="btn btn-primary btn-block">
+                                    <i class="fas fa-plus"></i> إضافة التصنيف
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    
+                    <!-- قسم الاستيراد والتصدير للتصنيفات -->
+                    <div class="export-import-section">
+                        <h3><i class="fas fa-file-excel"></i> التصدير والاستيراد - Excel</h3>
+                        <div class="export-import-grid">
+                            <div class="export-import-card">
+                                <h4>تصدير التصنيفات</h4>
+                                <p>تصدير جميع التصنيفات إلى ملف Excel</p>
+                                <button id="export-categories-excel" class="btn btn-success">
+                                    <i class="fas fa-file-export"></i> تصدير التصنيفات
+                                </button>
+                            </div>
+                            
+                            <div class="export-import-card">
+                                <h4>استيراد التصنيفات</h4>
+                                <p>استيراد التصنيفات من ملف Excel</p>
+                                <input type="file" id="import-categories-excel" accept=".xlsx, .xls" class="file-input">
+                                <label for="import-categories-excel" class="file-label">
+                                    <i class="fas fa-file-import"></i> اختيار ملف Excel
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">
+                                <i class="fas fa-list"></i>
+                                قائمة التصنيفات
+                            </h2>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table" id="categories-table">
+                                    <thead>
+                                        <tr>
+                                            <th>اسم التصنيف</th>
+                                            <th>اللون</th>
+                                            <th>عدد الأدوية</th>
+                                            <th>الإجراءات</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="categories-list">
+                                        <!-- سيتم ملؤها ديناميكياً -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- قسم وحدات القياس -->
+                <section id="units" class="section">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">
+                                <i class="fas fa-ruler"></i>
+                                إضافة وحدة قياس جديدة
+                            </h2>
+                        </div>
+                        <div class="card-body">
+                            <form id="unit-form">
+                                <div class="form-group">
+                                    <label for="unit-name" class="form-label">
+                                        <i class="fas fa-ruler"></i> اسم وحدة القياس
+                                    </label>
+                                    <input type="text" id="unit-name" class="form-control" required placeholder="أدخل اسم وحدة القياس">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="unit-symbol" class="form-label">
+                                        <i class="fas fa-text"></i> رمز الوحدة
+                                    </label>
+                                    <input type="text" id="unit-symbol" class="form-control" required placeholder="أدخل رمز الوحدة (مثال: قرص، زجاجة)">
+                                </div>
+                                
+                                <button type="submit" class="btn btn-primary btn-block">
+                                    <i class="fas fa-plus"></i> إضافة وحدة القياس
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    
+                    <!-- قسم الاستيراد والتصدير لوحدات القياس -->
+                    <div class="export-import-section">
+                        <h3><i class="fas fa-file-excel"></i> التصدير والاستيراد - Excel</h3>
+                        <div class="export-import-grid">
+                            <div class="export-import-card">
+                                <h4>تصدير وحدات القياس</h4>
+                                <p>تصدير جميع وحدات القياس إلى ملف Excel</p>
+                                <button id="export-units-excel" class="btn btn-success">
+                                    <i class="fas fa-file-export"></i> تصدير وحدات القياس
+                                </button>
+                            </div>
+                            
+                            <div class="export-import-card">
+                                <h4>استيراد وحدات القياس</h4>
+                                <p>استيراد وحدات القياس من ملف Excel</p>
+                                <input type="file" id="import-units-excel" accept=".xlsx, .xls" class="file-input">
+                                <label for="import-units-excel" class="file-label">
+                                    <i class="fas fa-file-import"></i> اختيار ملف Excel
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">
+                                <i class="fas fa-list"></i>
+                                قائمة وحدات القياس
+                            </h2>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table" id="units-table">
+                                    <thead>
+                                        <tr>
+                                            <th>اسم الوحدة</th>
+                                            <th>الرمز</th>
+                                            <th>عدد الأدوية</th>
+                                            <th>الإجراءات</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="units-list">
+                                        <!-- سيتم ملؤها ديناميكياً -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- قسم التنبيهات -->
+                <section id="alerts" class="section">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">
+                                <i class="fas fa-bell"></i>
+                                التنبيهات
+                            </h2>
+                        </div>
+                        <div class="card-body">
+                            <!-- قسم الاستيراد والتصدير للتنبيهات -->
+                            <div class="export-import-section">
+                                <h3><i class="fas fa-file-excel"></i> التصدير والاستيراد - Excel</h3>
+                                <div class="export-import-grid">
+                                    <div class="export-import-card">
+                                        <h4>تصدير التنبيهات</h4>
+                                        <p>تصدير جميع التنبيهات إلى ملف Excel</p>
+                                        <button id="export-alerts-excel" class="btn btn-success">
+                                            <i class="fas fa-file-export"></i> تصدير التنبيهات
+                                        </button>
+                                    </div>
+                                    
+                                    <div class="export-import-card">
+                                        <h4>تصدير سجل التنبيهات</h4>
+                                        <p>تصدير سجل التنبيهات التاريخي</p>
+                                        <button id="export-alerts-history-excel" class="btn btn-warning">
+                                            <i class="fas fa-history"></i> تصدير السجل
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div id="alerts-list">
+                                <!-- سيتم ملؤها ديناميكياً -->
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- قسم النواقص -->
+                <section id="shortages" class="section">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                الأدوية الناقصة والمنتهية
+                            </h2>
+                            <div class="shortages-stats">
+                                <span class="status-badge status-danger" id="expired-count">0 منتهي</span>
+                                <span class="status-badge status-warning" id="low-stock-count">0 منخفض</span>
+                                <span class="status-badge status-success" id="critical-count">0 حرج</span>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="filter-bar">
+                                <div class="filter-group">
+                                    <label class="form-label">بحث:</label>
+                                    <input type="text" class="form-control" id="shortage-search" placeholder="ابحث في الأدوية الناقصة...">
+                                </div>
+                                <div class="filter-group">
+                                    <label class="form-label">النوع:</label>
+                                    <select class="form-control" id="shortage-type-filter">
+                                        <option value="all">جميع الأنواع</option>
+                                        <option value="expired">منتهية الصلاحية فقط</option>
+                                        <option value="low-stock">منخفضة المخزون فقط</option>
+                                        <option value="critical">حرجة فقط</option>
+                                    </select>
+                                </div>
+                                <div class="filter-group">
+                                    <label class="form-label">الترتيب:</label>
+                                    <select class="form-control" id="shortage-sort">
+                                        <option value="severity">حسب الخطورة</option>
+                                        <option value="name">حسب الاسم</option>
+                                        <option value="quantity">حسب الكمية</option>
+                                        <option value="expiry">حسب تاريخ الصلاحية</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <!-- قسم الاستيراد والتصدير للنواقص -->
+                            <div class="export-import-section">
+                                <h3><i class="fas fa-file-excel"></i> التصدير - Excel</h3>
+                                <div class="export-import-grid">
+                                    <div class="export-import-card">
+                                        <h4>تصدير النواقص</h4>
+                                        <p>تصدير قائمة الأدوية الناقصة إلى ملف Excel</p>
+                                        <button id="export-shortages-excel" class="btn btn-success">
+                                            <i class="fas fa-file-export"></i> تصدير النواقص
+                                        </button>
+                                    </div>
+                                    <div class="export-import-card">
+                                        <h4>تصدير التقرير الشامل</h4>
+                                        <p>تصدير تقرير مفصل عن جميع النواقص</p>
+                                        <button id="export-shortages-report" class="btn btn-warning">
+                                            <i class="fas fa-chart-bar"></i> تصدير التقرير
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div id="shortages-list">
+                                <!-- سيتم ملؤها ديناميكياً -->
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- قسم الإعدادات -->
+                <section id="settings" class="section">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">
+                                <i class="fas fa-cog"></i>
+                                إعدادات النظام
+                            </h2>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-group">
+                                <label for="font-size" class="form-label">
+                                    <i class="fas fa-text-height"></i> حجم الخط
+                                </label>
+                                <select id="font-size" class="form-control">
+                                    <option value="14px">صغير</option>
+                                    <option value="16px" selected>متوسط</option>
+                                    <option value="18px">كبير</option>
+                                    <option value="20px">كبير جداً</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="theme" class="form-label">
+                                    <i class="fas fa-palette"></i> النمط اللوني
+                                </label>
+                                <select id="theme" class="form-control">
+                                    <option value="light">فاتح</option>
+                                    <option value="medium">متوسط</option>
+                                    <option value="dark">داكن</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <div class="toggle-group">
+                                    <label class="toggle-label">
+                                        <span class="toggle-text">
+                                            <i class="fas fa-bell"></i> تفعيل الإشعارات الفورية
+                                        </span>
+                                        <div class="toggle-switch">
+                                            <input type="checkbox" id="enable-notifications" class="toggle-input" checked>
+                                            <span class="toggle-slider"></span>
+                                            <span class="toggle-yes">نعم</span>
+                                            <span class="toggle-no">لا</span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <div class="toggle-group">
+                                    <label class="toggle-label">
+                                        <span class="toggle-text">
+                                            <i class="fas fa-font"></i> السماح بإظهار حرف معين
+                                        </span>
+                                        <div class="toggle-switch">
+                                            <input type="checkbox" id="show-specific-char" class="toggle-input">
+                                            <span class="toggle-slider"></span>
+                                            <span class="toggle-yes">نعم</span>
+                                            <span class="toggle-no">لا</span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- إضافة خيار وضع التشغيل (أونلاين/أوفلاين) -->
+                            <div class="form-group">
+                                <div class="toggle-group">
+                                    <label class="toggle-label">
+                                        <span class="toggle-text">
+                                            <i class="fas fa-wifi"></i> وضع التشغيل الأونلاين
+                                        </span>
+                                        <div class="toggle-switch">
+                                            <input type="checkbox" id="online-mode" class="toggle-input">
+                                            <span class="toggle-slider"></span>
+                                            <span class="toggle-yes">نعم</span>
+                                            <span class="toggle-no">لا</span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <button id="apply-settings" class="btn btn-primary btn-block">
+                                <i class="fas fa-check"></i> تطبيق الإعدادات
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">
+                                <i class="fas fa-database"></i>
+                                إدارة البيانات
+                            </h2>
+                        </div>
+                        <div class="card-body">
+                            <button id="add-sample-data" class="btn btn-outline btn-block">
+                                <i class="fas fa-vial"></i> إضافة بيانات تجريبية
+                            </button>
+                            <button id="clear-data" class="btn btn-danger btn-block">
+                                <i class="fas fa-trash"></i> مسح جميع البيانات
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">
+                                <i class="fas fa-info-circle"></i>
+                                معلومات التطبيق
+                            </h2>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-group">
+                                <p><i class="fas fa-code"></i> الإصدار: 4.0.0</p>
+                                <p><i class="fas fa-user"></i> المطور: بلال احمد (AHMOS)</p>
+                                <p><i class="fas fa-calendar"></i> تاريخ التحديث: 2025</p>
+                                <p><i class="fas fa-save"></i> حالة الحفظ: <span id="save-status">جميع البيانات محفوظة</span></p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- نافذة تعديل الدواء -->
+    <div class="modal-overlay" id="medicine-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modal-title">تفاصيل الدواء</h3>
+                <button class="modal-close" id="modal-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="medicine-edit-form">
+                    <div class="medicine-details-grid">
+                        <div class="detail-item">
+                            <span class="label">اسم الدواء:</span>
+                            <input type="text" id="edit-name" class="form-control" required>
+                        </div>
+                        <div class="detail-item">
+                            <span class="label">المادة الفعالة:</span>
+                            <input type="text" id="edit-active-ingredient" class="form-control" required>
+                        </div>
+                        <div class="detail-item">
+                            <span class="label">التركيز:</span>
+                            <input type="text" id="edit-concentration" class="form-control" required>
+                        </div>
+                        <div class="detail-item">
+                            <span class="label">التصنيف:</span>
+                            <select id="edit-category" class="form-control" required>
+                                <option value="">اختر التصنيف</option>
+                            </select>
+                        </div>
+                        <div class="detail-item">
+                            <span class="label">وحدة القياس:</span>
+                            <select id="edit-unit" class="form-control" required>
+                                <option value="">اختر وحدة القياس</option>
+                            </select>
+                        </div>
+                        <div class="detail-item">
+                            <span class="label">السعر:</span>
+                            <input type="number" id="edit-price" class="form-control" min="0" step="0.01" required>
+                        </div>
+                        <div class="detail-item">
+                            <span class="label">تاريخ الصلاحية:</span>
+                            <input type="date" id="edit-expiry-date" class="form-control" required>
+                        </div>
+                        <div class="detail-item">
+                            <span class="label">الكمية المطلوبة:</span>
+                            <input type="number" id="edit-required-quantity" class="form-control" min="0" required>
+                        </div>
+                        <div class="detail-item">
+                            <span class="label">عدد العلب:</span>
+                            <input type="number" id="edit-current-boxes" class="form-control" min="0" required>
+                        </div>
+                        <div class="detail-item">
+                            <span class="label">عدد الأجزاء:</span>
+                            <input type="number" id="edit-current-pieces" class="form-control" min="0" required>
+                        </div>
+                        <div class="detail-item">
+                            <span class="label">الحد الأدنى للإنذار:</span>
+                            <input type="number" id="edit-min-alert" class="form-control" min="0" required>
+                        </div>
+                        <div class="detail-item" id="edit-strips-count-container" style="display: none;">
+                            <span class="label">عدد الشرايط:</span>
+                            <input type="number" id="edit-strips-count" class="form-control" min="0">
+                        </div>
+                        <div class="detail-item">
+                            <span class="label">متوفر منه مخزون:</span>
+                            <div class="toggle-group">
+                                <label class="toggle-label">
+                                    <div class="toggle-switch">
+                                        <input type="checkbox" id="edit-has-stock" class="toggle-input">
+                                        <span class="toggle-slider"></span>
+                                        <span class="toggle-yes">نعم</span>
+                                        <span class="toggle-no">لا</span>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="detail-item" id="edit-stock-quantity-container" style="display: none;">
+                            <span class="label">كمية المخزون:</span>
+                            <input type="number" id="edit-stock-quantity" class="form-control" min="0">
+                        </div>
+                        <div class="detail-item">
+                            <span class="label">حالة الصنف مهم:</span>
+                            <div class="toggle-group">
+                                <label class="toggle-label">
+                                    <div class="toggle-switch">
+                                        <input type="checkbox" id="edit-is-important" class="toggle-input">
+                                        <span class="toggle-slider"></span>
+                                        <span class="toggle-yes">نعم</span>
+                                        <span class="toggle-no">لا</span>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-danger" id="delete-medicine-btn">
+                            <i class="fas fa-trash"></i> حذف الدواء
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> حفظ التعديلات
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- مؤشر الحفظ التلقائي -->
+    <div class="auto-save" id="auto-save-indicator">
+        <i class="fas fa-check-circle"></i>
+        <span>تم حفظ البيانات</span>
+    </div>
+
+    <script>
+        // بيانات التطبيق المخزنة محلياً
+        const appData = {
+            medicines: JSON.parse(localStorage.getItem('ahmos_medicines')) || [],
+            categories: JSON.parse(localStorage.getItem('ahmos_categories')) || [
+                { id: '1', name: 'مسكنات', color: '#4361ee' },
+                { id: '2', name: 'مضادات حيوية', color: '#4cc9f0' },
+                { id: '3', name: 'فيتامينات', color: '#f72585' },
+                { id: '4', name: 'أدوية مزمنة', color: '#7209b7' },
+                { id: '5', name: 'أقراص', color: '#3a0ca3' },
+                { id: '6', name: 'كبسولات', color: '#4ea8de' },
+                { id: '7', name: 'أفلام', color: '#560bad' }
+            ],
+            units: JSON.parse(localStorage.getItem('ahmos_units')) || [
+                { id: '1', name: 'قرص', symbol: 'قرص' },
+                { id: '2', name: 'زجاجة', symbol: 'زجاجة' },
+                { id: '3', name: 'علبة', symbol: 'علبة' },
+                { id: '4', name: 'شريط', symbol: 'شريط' },
+                { id: '5', name: 'أنبوبة', symbol: 'أنبوبة' },
+                { id: '6', name: 'أمبولة', symbol: 'أمبولة' },
+                { id: '7', name: 'محقن', symbol: 'محقن' }
+            ],
+            settings: JSON.parse(localStorage.getItem('ahmos_settings')) || {
+                fontSize: '16px',
+                theme: 'light',
+                notifications: true,
+                offlineMode: true,
+                showSpecificChar: false
+            },
+            notifications: JSON.parse(localStorage.getItem('ahmos_notifications')) || []
+        };
+
+        // حالة التطبيق
+        const appState = {
+            currentSection: 'dashboard',
+            sidebarCollapsed: false,
+            notificationsVisible: false,
+            isOnline: false, // التطبيق يعمل بدون اتصال افتراضياً
+            isSaving: false,
+            currentMedicineId: null
+        };
+
+        // تهيئة التطبيق
+        document.addEventListener('DOMContentLoaded', function() {
+            initApp();
+            setupEventListeners();
+            loadDashboardData();
+            loadMedicines();
+            loadCategories();
+            loadUnits();
+            loadNotifications();
+            loadAlerts();
+            loadShortages();
+            setupConnectionIndicator();
+        });
+
+        function initApp() {
+            // تطبيق الإعدادات المحفوظة
+            applyTheme(appData.settings.theme);
+            
+            // تحميل التصنيفات في القوائم المنسدلة
+            loadCategoryOptions();
+            loadUnitOptions();
+            
+            // تحديث الإحصائيات
+            updateStatistics();
+            
+            // إعداد أزرار التبديل
+            setupToggleSwitches();
+            
+            // تطبيق إعدادات الخط
+            document.body.style.fontSize = appData.settings.fontSize;
+            document.getElementById('font-size').value = appData.settings.fontSize;
+            document.getElementById('theme').value = appData.settings.theme;
+            document.getElementById('enable-notifications').checked = appData.settings.notifications;
+            document.getElementById('show-specific-char').checked = appData.settings.showSpecificChar;
+            document.getElementById('online-mode').checked = !appData.settings.offlineMode;
+        }
+
+        function setupConnectionIndicator() {
+            const indicator = document.getElementById('connection-indicator');
+            // عرض حالة الاتصال حسب الإعدادات
+            if (appData.settings.offlineMode) {
+                indicator.className = 'connection-indicator offline';
+                indicator.innerHTML = '<span class="connection-status offline"></span><span>غير متصل</span>';
+            } else {
+                indicator.className = 'connection-indicator online';
+                indicator.innerHTML = '<span class="connection-status online"></span><span>متصل</span>';
+            }
+        }
+
+        function setupEventListeners() {
+            // فتح وإغلاق القائمة الجانبية المنبثقة
+            document.getElementById('sidebar-toggle').addEventListener('click', toggleSidebar);
+            document.getElementById('close-sidebar').addEventListener('click', toggleSidebar);
+            document.getElementById('sidebar-overlay').addEventListener('click', toggleSidebar);
+
+            // التنقل بين الأقسام
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const sectionId = this.getAttribute('data-section');
+                    switchSection(sectionId);
+                    toggleSidebar(); // إغلاق القائمة بعد النقر على رابط
+                });
+            });
+
+            // تبديل الثيم
+            document.getElementById('theme-btn').addEventListener('click', toggleThemeOptions);
+            document.querySelectorAll('.theme-option').forEach(option => {
+                option.addEventListener('click', function() {
+                    const theme = this.getAttribute('data-theme');
+                    applyTheme(theme);
+                    document.getElementById('theme-options').classList.remove('active');
+                });
+            });
+
+            // التنبيهات
+            document.getElementById('notification-btn').addEventListener('click', toggleNotifications);
+            document.getElementById('clear-notifications').addEventListener('click', clearNotifications);
+
+            // البحث العام
+            document.getElementById('global-search').addEventListener('input', function() {
+                const searchTerm = this.value.toLowerCase();
+                if (searchTerm.length > 0) {
+                    performGlobalSearch(searchTerm);
+                }
+            });
+
+            // البحث في الأدوية
+            document.getElementById('medicine-search').addEventListener('input', filterMedicines);
+            document.getElementById('category-filter').addEventListener('change', filterMedicines);
+            document.getElementById('sort-option').addEventListener('change', filterMedicines);
+
+            // البحث في النواقص
+            document.getElementById('shortage-search').addEventListener('input', filterShortages);
+            document.getElementById('shortage-type-filter').addEventListener('change', filterShortages);
+            document.getElementById('shortage-sort').addEventListener('change', filterShortages);
+
+            // النافذة المنبثقة
+            document.getElementById('modal-close').addEventListener('click', closeMedicineModal);
+            document.getElementById('medicine-edit-form').addEventListener('submit', updateMedicine);
+            document.getElementById('delete-medicine-btn').addEventListener('click', deleteMedicineFromModal);
+
+            // إدارة المخزون في النافذة المنبثقة
+            document.getElementById('edit-has-stock').addEventListener('change', function() {
+                const container = document.getElementById('edit-stock-quantity-container');
+                if (this.checked) {
+                    container.style.display = 'flex';
+                    document.getElementById('edit-stock-quantity').required = true;
+                } else {
+                    container.style.display = 'none';
+                    document.getElementById('edit-stock-quantity').required = false;
+                    document.getElementById('edit-stock-quantity').value = '';
+                }
+            });
+
+            // التحكم في إظهار حقل عدد الشرايط في النافذة المنبثقة
+            document.getElementById('edit-category').addEventListener('change', function() {
+                const selectedCategory = this.options[this.selectedIndex].text;
+                const stripsContainer = document.getElementById('edit-strips-count-container');
+                if (selectedCategory.includes('أقراص') || selectedCategory.includes('كبسولات') || selectedCategory.includes('أفلام')) {
+                    stripsContainer.style.display = 'flex';
+                } else {
+                    stripsContainer.style.display = 'none';
+                    document.getElementById('edit-strips-count').value = '';
+                }
+            });
+
+            // التحكم في إظهار حقل عدد الشرايط في نموذج الإضافة
+            document.getElementById('category').addEventListener('change', function() {
+                const selectedCategory = this.options[this.selectedIndex].text;
+                const stripsContainer = document.getElementById('strips-count-container');
+                if (selectedCategory.includes('أقراص') || selectedCategory.includes('كبسولات') || selectedCategory.includes('أفلام')) {
+                    stripsContainer.style.display = 'block';
+                } else {
+                    stripsContainer.style.display = 'none';
+                    document.getElementById('strips-count').value = '';
+                }
+            });
+
+            // الأزرار
+            document.getElementById('add-medicine-btn').addEventListener('click', function() {
+                switchSection('add-medicine');
+            });
+
+            // النماذج
+            document.getElementById('medicine-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                addMedicine();
+            });
+
+            document.getElementById('category-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                addCategory();
+            });
+
+            document.getElementById('unit-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                addUnit();
+            });
+
+            document.getElementById('has-stock').addEventListener('change', function() {
+                const container = document.getElementById('stock-quantity-container');
+                if (this.checked) {
+                    container.style.display = 'block';
+                    document.getElementById('stock-quantity').required = true;
+                } else {
+                    container.style.display = 'none';
+                    document.getElementById('stock-quantity').required = false;
+                    document.getElementById('stock-quantity').value = '';
+                }
+            });
+
+            document.getElementById('apply-settings').addEventListener('click', applySettings);
+            document.getElementById('add-sample-data').addEventListener('click', addSampleData);
+            document.getElementById('clear-data').addEventListener('click', clearData);
+
+            // أحداث الاستيراد والتصدير المحسنة
+            document.getElementById('export-medicines-excel').addEventListener('click', exportMedicinesToExcel);
+            document.getElementById('import-medicines-excel').addEventListener('change', importMedicinesFromExcel);
+            
+            document.getElementById('export-statistics-excel').addEventListener('click', exportStatisticsToExcel);
+            document.getElementById('export-reports-excel').addEventListener('click', exportStatisticsToExcel);
+            
+            document.getElementById('export-categories-excel').addEventListener('click', exportCategoriesToExcel);
+            document.getElementById('import-categories-excel').addEventListener('change', importCategoriesFromExcel);
+            
+            document.getElementById('export-units-excel').addEventListener('click', exportUnitsToExcel);
+            document.getElementById('import-units-excel').addEventListener('change', importUnitsFromExcel);
+            
+            document.getElementById('export-alerts-excel').addEventListener('click', exportAlertsToExcel);
+            document.getElementById('export-alerts-history-excel').addEventListener('click', exportAlertsToExcel);
+            
+            document.getElementById('export-shortages-excel').addEventListener('click', exportShortagesToExcel);
+            document.getElementById('export-shortages-report').addEventListener('click', exportShortagesToExcel);
+
+            // إغلاق نوافذ الثيم عند النقر خارجها
+            document.addEventListener('click', function(e) {
+                if (!e.target.closest('.theme-selector')) {
+                    document.getElementById('theme-options').classList.remove('active');
+                }
+                if (!e.target.closest('.notifications-panel') && !e.target.closest('#notification-btn')) {
+                    document.getElementById('notifications-panel').classList.remove('active');
+                }
+            });
+
+            // إغلاق القائمة الجانبية عند الضغط على مفتاح Escape
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    closeSidebar();
+                }
+            });
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            const toggleBtn = document.getElementById('sidebar-toggle');
+            
+            sidebar.classList.toggle('active');
+            overlay.classList.toggle('active');
+            toggleBtn.classList.toggle('active');
+        }
+
+        function closeSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            const toggleBtn = document.getElementById('sidebar-toggle');
+            
+            sidebar.classList.remove('active');
+            overlay.classList.remove('active');
+            toggleBtn.classList.remove('active');
+        }
+
+        function switchSection(sectionId) {
+            // إخفاء جميع الأقسام
+            document.querySelectorAll('.section').forEach(section => {
+                section.classList.remove('active');
+            });
+
+            // إلغاء تنشيط جميع روابط التنقل
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+
+            // إظهار القسم المطلوب
+            document.getElementById(sectionId).classList.add('active');
+            document.querySelector(`[data-section="${sectionId}"]`).classList.add('active');
+
+            // تحديث عنوان الصفحة
+            updatePageTitle(sectionId);
+
+            // إخفاء لوحة التنبيهات
+            hideNotifications();
+
+            // تحديث بيانات القسم إذا لزم الأمر
+            if (sectionId === 'dashboard') {
+                loadDashboardData();
+            } else if (sectionId === 'shortages') {
+                loadShortages();
+            } else if (sectionId === 'alerts') {
+                loadAlerts();
+            } else if (sectionId === 'statistics') {
+                updateStatistics();
+            }
+        }
+
+        function updatePageTitle(sectionId) {
+            const titles = {
+                'dashboard': 'لوحة التحكم',
+                'add-medicine': 'إضافة دواء جديد',
+                'manage-medicines': 'إدارة الأدوية',
+                'statistics': 'الإحصائيات الشاملة',
+                'categories': 'إدارة التصنيفات',
+                'units': 'إدارة وحدات القياس',
+                'alerts': 'التنبيهات',
+                'shortages': 'النواقص والمنتهية',
+                'settings': 'إعدادات النظام'
+            };
+            
+            document.getElementById('page-title').textContent = titles[sectionId] || 'لوحة التحكم';
+        }
+
+        function toggleThemeOptions() {
+            document.getElementById('theme-options').classList.toggle('active');
+        }
+
+        function applyTheme(theme) {
+            document.body.className = `theme-${theme}`;
+            
+            // تحديث عنصر التحديد في الإعدادات
+            document.getElementById('theme').value = theme;
+            
+            // حفظ التفضيل
+            if (!appData.settings) appData.settings = {};
+            appData.settings.theme = theme;
+            saveData('settings', appData.settings);
+        }
+
+        function toggleNotifications() {
+            const panel = document.getElementById('notifications-panel');
+            appState.notificationsVisible = !appState.notificationsVisible;
+            panel.classList.toggle('active', appState.notificationsVisible);
+        }
+
+        function hideNotifications() {
+            const panel = document.getElementById('notifications-panel');
+            panel.classList.remove('active');
+            appState.notificationsVisible = false;
+        }
+
+        function clearNotifications() {
+            appData.notifications = [];
+            saveData('notifications', appData.notifications);
+            loadNotifications();
+        }
+
+        function loadNotifications() {
+            const container = document.getElementById('notifications-list');
+            container.innerHTML = '';
+
+            if (appData.notifications.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+                        <i class="fas fa-bell-slash fa-2x" style="margin-bottom: 1rem;"></i>
+                        <div>لا توجد إشعارات</div>
+                    </div>
+                `;
+                return;
+            }
+
+            appData.notifications.forEach(notification => {
+                const notificationElement = document.createElement('div');
+                notificationElement.className = `notification-item ${notification.read ? '' : 'unread'}`;
+                notificationElement.innerHTML = `
+                    <div class="notification-title">
+                        <span>${notification.title}</span>
+                        <small class="notification-time">${formatTime(notification.timestamp)}</small>
+                    </div>
+                    <div class="notification-message">${notification.message}</div>
+                `;
+                container.appendChild(notificationElement);
+            });
+
+            // تحديث عداد التنبيهات
+            const unreadCount = appData.notifications.filter(n => !n.read).length;
+            document.querySelector('.notification-badge').textContent = unreadCount;
+        }
+
+        function addNotification(title, message, type = 'info') {
+            const notification = {
+                id: Date.now().toString(),
+                title,
+                message,
+                type,
+                read: false,
+                timestamp: new Date().toISOString()
+            };
+
+            appData.notifications.unshift(notification);
+            saveData('notifications', appData.notifications);
+            loadNotifications();
+
+            // عرض إشعار فوري
+            showToast(message, type);
+        }
+
+        function showToast(message, type = 'info') {
+            // إنشاء عنصر Toast
+            const toast = document.createElement('div');
+            toast.className = `alert alert-${type}`;
+            toast.style.cssText = `
+                position: fixed;
+                top: 100px;
+                left: 50%;
+                transform: translateX(-50%);
+                z-index: 1000;
+                min-width: 300px;
+                max-width: 90vw;
+                animation: slideInDown 0.3s ease;
+            `;
+            toast.innerHTML = `
+                <i class="fas fa-${getIconByType(type)}"></i>
+                <span>${message}</span>
+                <button onclick="this.parentElement.remove()" style="background: none; border: none; color: inherit; cursor: pointer; margin-right: auto;">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+
+            document.body.appendChild(toast);
+
+            // إزالة Toast تلقائياً بعد 5 ثواني
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.style.animation = 'slideOutUp 0.3s ease';
+                    setTimeout(() => toast.remove(), 300);
+                }
+            }, 5000);
+        }
+
+        function getIconByType(type) {
+            const icons = {
+                'success': 'check-circle',
+                'danger': 'exclamation-triangle',
+                'warning': 'exclamation-circle',
+                'info': 'info-circle'
+            };
+            return icons[type] || 'info-circle';
+        }
+
+        function loadDashboardData() {
+            updateStatistics();
+            loadAttentionMedicines();
+        }
+
+        function updateStatistics() {
+            const totalMedicines = appData.medicines.length;
+            const expiredMedicines = appData.medicines.filter(m => 
+                new Date(m.expiryDate) <= new Date()
+            ).length;
+            const lowStockMedicines = appData.medicines.filter(m => 
+                (m.currentBoxes + m.currentPieces) <= m.minAlert
+            ).length;
+            const totalCategories = appData.categories.length;
+
+            document.getElementById('total-medicines').textContent = totalMedicines;
+            document.getElementById('available-medicines').textContent = totalMedicines - expiredMedicines;
+            document.getElementById('low-stock-medicines').textContent = lowStockMedicines;
+            document.getElementById('expired-medicines').textContent = expiredMedicines;
+
+            document.getElementById('total-medicines-stat').textContent = totalMedicines;
+            document.getElementById('expired-medicines-stat').textContent = expiredMedicines;
+            document.getElementById('low-stock-medicines-stat').textContent = lowStockMedicines;
+            document.getElementById('total-categories-stat').textContent = totalCategories;
+        }
+
+        function loadAttentionMedicines() {
+            const container = document.getElementById('attention-medicines');
+            const attentionMedicines = appData.medicines.filter(medicine => {
+                const today = new Date();
+                const expiryDate = new Date(medicine.expiryDate);
+                const daysUntilExpiry = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
+                
+                return (medicine.currentBoxes + medicine.currentPieces) <= medicine.minAlert || daysUntilExpiry <= 30;
+            }).slice(0, 5);
+
+            container.innerHTML = '';
+
+            if (attentionMedicines.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+                        <i class="fas fa-check-circle fa-2x" style="margin-bottom: 1rem; color: var(--success);"></i>
+                        <div>لا توجد أدوية تحتاج انتباه</div>
+                        <small>جميع الأدوية في حالة جيدة</small>
+                    </div>
+                `;
+                return;
+            }
+
+            attentionMedicines.forEach(medicine => {
+                const category = appData.categories.find(c => c.id === medicine.categoryId);
+                const today = new Date();
+                const expiryDate = new Date(medicine.expiryDate);
+                const daysUntilExpiry = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
+                
+                let status = 'success';
+                let statusText = 'جيد';
+                let icon = 'check-circle';
+                
+                if (medicine.currentBoxes === 0 && medicine.currentPieces === 0) {
+                    status = 'danger';
+                    statusText = 'نافذ';
+                    icon = 'times-circle';
+                } else if ((medicine.currentBoxes + medicine.currentPieces) <= medicine.minAlert) {
+                    status = 'warning';
+                    statusText = 'منخفض';
+                    icon = 'exclamation-triangle';
+                }
+                
+                if (expiryDate <= today) {
+                    status = 'danger';
+                    statusText = 'منتهي';
+                    icon = 'calendar-times';
+                } else if (daysUntilExpiry <= 7) {
+                    status = 'warning';
+                    statusText = 'قريب الانتهاء';
+                    icon = 'exclamation-circle';
+                }
+
+                const medicineElement = document.createElement('div');
+                medicineElement.className = `medicine-card ${status === 'danger' ? 'expired' : status === 'warning' ? 'low-stock' : ''}`;
+                medicineElement.innerHTML = `
+                    <div class="medicine-status status-${status}">
+                        <i class="fas fa-${icon}"></i> ${statusText}
+                    </div>
+                    <div class="medicine-name">${medicine.name}</div>
+                    <div class="medicine-concentration">${medicine.concentration}</div>
+                    <div class="medicine-price">السعر: ${medicine.price} ريال</div>
+                    <div class="medicine-quantity">الكمية: ${medicine.currentBoxes} علبة, ${medicine.currentPieces} قطعة</div>
+                `;
+                
+                medicineElement.addEventListener('click', function() {
+                    openMedicineModal(medicine.id);
+                });
+                
+                container.appendChild(medicineElement);
+            });
+        }
+
+        function loadMedicines() {
+            const container = document.getElementById('medicines-grid');
+            const categoryFilter = document.getElementById('category-filter');
+            
+            // تحديث قائمة التصنيفات في الفلتر
+            categoryFilter.innerHTML = '<option value="">جميع التصنيفات</option>';
+            appData.categories.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category.id;
+                option.textContent = category.name;
+                categoryFilter.appendChild(option);
+            });
+            
+            // عرض الأدوية
+            displayMedicines(appData.medicines);
+        }
+
+        function displayMedicines(medicines) {
+            const container = document.getElementById('medicines-grid');
+            container.innerHTML = '';
+
+            if (medicines.length === 0) {
+                container.innerHTML = `
+                    <div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: var(--text-secondary);">
+                        <i class="fas fa-pills fa-2x" style="margin-bottom: 1rem; opacity: 0.5;"></i>
+                        <div>لا توجد أدوية</div>
+                        <small>استخدم قسم "إضافة دواء جديد" لإضافة أدوية</small>
+                    </div>
+                `;
+                return;
+            }
+
+            medicines.forEach(medicine => {
+                const category = appData.categories.find(c => c.id === medicine.categoryId);
+                const today = new Date();
+                const expiryDate = new Date(medicine.expiryDate);
+                const daysUntilExpiry = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
+                
+                let status = 'success';
+                let statusText = 'جيد';
+                let icon = 'check-circle';
+                
+                if (medicine.currentBoxes === 0 && medicine.currentPieces === 0) {
+                    status = 'danger';
+                    statusText = 'نافذ';
+                    icon = 'times-circle';
+                } else if ((medicine.currentBoxes + medicine.currentPieces) <= medicine.minAlert) {
+                    status = 'warning';
+                    statusText = 'منخفض';
+                    icon = 'exclamation-triangle';
+                }
+                
+                if (expiryDate <= today) {
+                    status = 'danger';
+                    statusText = 'منتهي';
+                    icon = 'calendar-times';
+                } else if (daysUntilExpiry <= 7) {
+                    status = 'warning';
+                    statusText = 'قريب الانتهاء';
+                    icon = 'exclamation-circle';
+                }
+
+                const medicineCard = document.createElement('div');
+                medicineCard.className = `medicine-card ${status === 'danger' ? 'expired' : status === 'warning' ? 'low-stock' : ''}`;
+                medicineCard.innerHTML = `
+                    <div class="medicine-status status-${status}">
+                        <i class="fas fa-${icon}"></i> ${statusText}
+                    </div>
+                    <div class="medicine-name">${medicine.name}</div>
+                    <div class="medicine-concentration">${medicine.concentration}</div>
+                    <div class="medicine-price">السعر: ${medicine.price} ريال</div>
+                    <div class="medicine-quantity">الكمية: ${medicine.currentBoxes} علبة, ${medicine.currentPieces} قطعة</div>
+                `;
+                
+                // إضافة حدث النقر لفتح النافذة المنبثقة
+                medicineCard.addEventListener('click', function() {
+                    openMedicineModal(medicine.id);
+                });
+                
+                container.appendChild(medicineCard);
+            });
+        }
+
+        function filterMedicines() {
+            const searchTerm = document.getElementById('medicine-search').value.toLowerCase();
+            const categoryFilter = document.getElementById('category-filter').value;
+            const sortOption = document.getElementById('sort-option').value;
+
+            let filteredMedicines = appData.medicines.filter(medicine => {
+                const matchesSearch = medicine.name.toLowerCase().includes(searchTerm) || 
+                                    medicine.activeIngredient.toLowerCase().includes(searchTerm) ||
+                                    medicine.concentration.toLowerCase().includes(searchTerm);
+                const matchesCategory = !categoryFilter || medicine.categoryId === categoryFilter;
+                
+                return matchesSearch && matchesCategory;
+            });
+
+            // تطبيق الترتيب
+            filteredMedicines.sort((a, b) => {
+                switch (sortOption) {
+                    case 'name-asc':
+                        return a.name.localeCompare(b.name);
+                    case 'name-desc':
+                        return b.name.localeCompare(a.name);
+                    case 'date-newest':
+                        return new Date(b.createdAt) - new Date(a.createdAt);
+                    case 'quantity-low':
+                        return (a.currentBoxes + a.currentPieces) - (b.currentBoxes + b.currentPieces);
+                    case 'expiry-soon':
+                        return new Date(a.expiryDate) - new Date(b.expiryDate);
+                    default:
+                        return 0;
+                }
+            });
+
+            displayMedicines(filteredMedicines);
+        }
+
+        function performGlobalSearch(searchTerm) {
+            // البحث في الأدوية
+            const medicineResults = appData.medicines.filter(medicine => 
+                medicine.name.toLowerCase().includes(searchTerm) || 
+                medicine.activeIngredient.toLowerCase().includes(searchTerm) ||
+                medicine.concentration.toLowerCase().includes(searchTerm)
+            );
+
+            // البحث في التصنيفات
+            const categoryResults = appData.categories.filter(category => 
+                category.name.toLowerCase().includes(searchTerm)
+            );
+
+            // عرض النتائج
+            if (medicineResults.length > 0) {
+                switchSection('manage-medicines');
+                displayMedicines(medicineResults);
+                document.getElementById('medicine-search').value = searchTerm;
+            } else if (categoryResults.length > 0) {
+                switchSection('categories');
+                showMessage(`تم العثور على ${categoryResults.length} تصنيف يحتوي على "${searchTerm}"`, 'info');
+            } else {
+                showMessage(`لا توجد نتائج للبحث عن "${searchTerm}"`, 'warning');
+            }
+        }
+
+        function loadCategories() {
+            const container = document.getElementById('categories-list');
+            container.innerHTML = '';
+
+            if (appData.categories.length === 0) {
+                container.innerHTML = `
+                    <tr>
+                        <td colspan="4" style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+                            <i class="fas fa-tags fa-2x" style="margin-bottom: 1rem; opacity: 0.5;"></i>
+                            <div>لا توجد تصنيفات</div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            appData.categories.forEach(category => {
+                const medicinesCount = appData.medicines.filter(m => m.categoryId === category.id).length;
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${category.name}</td>
+                    <td>
+                        <span class="category-color-preview" style="background:${category.color}; width:20px; height:20px; border-radius:50%; display:inline-block; margin-left:8px;"></span>
+                        ${category.color}
+                    </td>
+                    <td>${medicinesCount}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline" onclick="editCategory('${category.id}')">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteCategory('${category.id}')" ${medicinesCount > 0 ? 'disabled' : ''}>
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        function loadUnits() {
+            const container = document.getElementById('units-list');
+            container.innerHTML = '';
+
+            if (appData.units.length === 0) {
+                container.innerHTML = `
+                    <tr>
+                        <td colspan="4" style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+                            <i class="fas fa-ruler fa-2x" style="margin-bottom: 1rem; opacity: 0.5;"></i>
+                            <div>لا توجد وحدات قياس</div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            appData.units.forEach(unit => {
+                const medicinesCount = appData.medicines.filter(m => m.unit === unit.id).length;
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${unit.name}</td>
+                    <td>${unit.symbol}</td>
+                    <td>${medicinesCount}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline" onclick="editUnit('${unit.id}')">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteUnit('${unit.id}')" ${medicinesCount > 0 ? 'disabled' : ''}>
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        function loadCategoryOptions() {
+            const categorySelect = document.getElementById('category');
+            const editCategorySelect = document.getElementById('edit-category');
+            
+            categorySelect.innerHTML = '<option value="">اختر التصنيف</option>';
+            editCategorySelect.innerHTML = '<option value="">اختر التصنيف</option>';
+            
+            appData.categories.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category.id;
+                option.textContent = category.name;
+                categorySelect.appendChild(option);
+                
+                const editOption = option.cloneNode(true);
+                editCategorySelect.appendChild(editOption);
+            });
+        }
+
+        function loadUnitOptions() {
+            const unitSelect = document.getElementById('unit');
+            const editUnitSelect = document.getElementById('edit-unit');
+            
+            unitSelect.innerHTML = '<option value="">اختر وحدة القياس</option>';
+            editUnitSelect.innerHTML = '<option value="">اختر وحدة القياس</option>';
+            
+            appData.units.forEach(unit => {
+                const option = document.createElement('option');
+                option.value = unit.id;
+                option.textContent = unit.symbol;
+                unitSelect.appendChild(option);
+                
+                const editOption = option.cloneNode(true);
+                editUnitSelect.appendChild(editOption);
+            });
+        }
+
+        function addMedicine() {
+            try {
+                const name = document.getElementById('medicine-name').value.trim();
+                const activeIngredient = document.getElementById('active-ingredient').value.trim();
+                const concentration = document.getElementById('concentration').value.trim();
+                const categoryId = document.getElementById('category').value;
+                const unitId = document.getElementById('unit').value;
+                const price = parseFloat(document.getElementById('price').value);
+                const expiryDate = document.getElementById('expiry-date').value;
+                const requiredQuantity = safeParseInt(document.getElementById('required-quantity').value);
+                const currentBoxes = safeParseInt(document.getElementById('current-boxes').value);
+                const currentPieces = safeParseInt(document.getElementById('current-pieces').value);
+                const minAlert = safeParseInt(document.getElementById('min-alert').value);
+                const hasStock = document.getElementById('has-stock').checked;
+                const isImportant = document.getElementById('is-important').checked;
+                const stockQuantity = hasStock ? safeParseInt(document.getElementById('stock-quantity').value) : 0;
+                
+                // عدد الشرايط - قد يكون غير مطلوب
+                const stripsCount = document.getElementById('strips-count-container').style.display === 'block' 
+                    ? safeParseInt(document.getElementById('strips-count').value) 
+                    : 0;
+                
+                if (!name || !activeIngredient || !concentration || !categoryId || !unitId || !expiryDate || isNaN(price)) {
+                    showMessage('يرجى ملء جميع الحقول المطلوبة', 'error');
+                    return;
+                }
+                
+                if (hasStock && !stockQuantity) {
+                    showMessage('يرجى إدخال كمية المخزون', 'error');
+                    return;
+                }
+                
+                const newMedicine = {
+                    id: Date.now().toString(),
+                    name: name,
+                    activeIngredient: activeIngredient,
+                    concentration: concentration,
+                    categoryId: categoryId,
+                    unit: unitId,
+                    price: price,
+                    expiryDate: expiryDate,
+                    requiredQuantity: requiredQuantity,
+                    currentBoxes: currentBoxes,
+                    currentPieces: currentPieces,
+                    minAlert: minAlert,
+                    hasStock: hasStock,
+                    stockQuantity: stockQuantity,
+                    isImportant: isImportant,
+                    stripsCount: stripsCount,
+                    createdAt: new Date().toISOString()
+                };
+                
+                appData.medicines.push(newMedicine);
+                saveData('medicines', appData.medicines);
+                
+                loadMedicines();
+                updateStatistics();
+                loadDashboardData();
+                loadAlerts();
+                loadShortages();
+                
+                document.getElementById('medicine-form').reset();
+                document.getElementById('stock-quantity-container').style.display = 'none';
+                document.getElementById('strips-count-container').style.display = 'none';
+                showMessage('تم إضافة الدواء بنجاح', 'success');
+                addNotification('دواء جديد', `تم إضافة ${name} إلى النظام`, 'success');
+                
+                // الانتقال إلى قسم إدارة الأدوية
+                switchSection('manage-medicines');
+            } catch (error) {
+                console.error('خطأ في إضافة الدواء:', error);
+                showMessage('حدث خطأ أثناء إضافة الدواء', 'error');
+            }
+        }
+
+        function addCategory() {
+            try {
+                const name = document.getElementById('category-name').value.trim();
+                const color = document.getElementById('category-color').value;
+                
+                if (!name) {
+                    showMessage('يرجى إدخال اسم التصنيف', 'error');
+                    return;
+                }
+                
+                const newCategory = {
+                    id: Date.now().toString(),
+                    name: name,
+                    color: color
+                };
+                
+                appData.categories.push(newCategory);
+                saveData('categories', appData.categories);
+                loadCategories();
+                loadCategoryOptions();
+                
+                document.getElementById('category-form').reset();
+                showMessage('تم إضافة التصنيف بنجاح', 'success');
+                addNotification('تصنيف جديد', `تم إضافة تصنيف ${name}`, 'info');
+            } catch (error) {
+                console.error('خطأ في إضافة التصنيف:', error);
+                showMessage('حدث خطأ أثناء إضافة التصنيف', 'error');
+            }
+        }
+
+        function addUnit() {
+            try {
+                const name = document.getElementById('unit-name').value.trim();
+                const symbol = document.getElementById('unit-symbol').value.trim();
+                
+                if (!name || !symbol) {
+                    showMessage('يرجى إدخال اسم ورمز الوحدة', 'error');
+                    return;
+                }
+                
+                const newUnit = {
+                    id: Date.now().toString(),
+                    name: name,
+                    symbol: symbol
+                };
+                
+                appData.units.push(newUnit);
+                saveData('units', appData.units);
+                loadUnits();
+                loadUnitOptions();
+                
+                document.getElementById('unit-form').reset();
+                showMessage('تم إضافة وحدة القياس بنجاح', 'success');
+                addNotification('وحدة قياس جديدة', `تم إضافة ${name} (${symbol})`, 'info');
+            } catch (error) {
+                console.error('خطأ في إضافة وحدة القياس:', error);
+                showMessage('حدث خطأ أثناء إضافة وحدة القياس', 'error');
+            }
+        }
+
+        function openMedicineModal(medicineId) {
+            const medicine = appData.medicines.find(m => m.id === medicineId);
+            if (!medicine) return;
+            
+            appState.currentMedicineId = medicineId;
+            
+            // ملء النموذج ببيانات الدواء
+            document.getElementById('modal-title').textContent = `تفاصيل الدواء: ${medicine.name}`;
+            document.getElementById('edit-name').value = medicine.name;
+            document.getElementById('edit-active-ingredient').value = medicine.activeIngredient;
+            document.getElementById('edit-concentration').value = medicine.concentration;
+            document.getElementById('edit-category').value = medicine.categoryId;
+            document.getElementById('edit-unit').value = medicine.unit;
+            document.getElementById('edit-price').value = medicine.price;
+            document.getElementById('edit-expiry-date').value = medicine.expiryDate;
+            document.getElementById('edit-required-quantity').value = medicine.requiredQuantity;
+            document.getElementById('edit-current-boxes').value = medicine.currentBoxes;
+            document.getElementById('edit-current-pieces').value = medicine.currentPieces;
+            document.getElementById('edit-min-alert').value = medicine.minAlert;
+            document.getElementById('edit-has-stock').checked = medicine.hasStock;
+            document.getElementById('edit-is-important').checked = medicine.isImportant;
+            document.getElementById('edit-strips-count').value = medicine.stripsCount || 0;
+            
+            // التحكم في إظهار حقل عدد الشرايط
+            const selectedCategory = document.getElementById('edit-category').options[document.getElementById('edit-category').selectedIndex].text;
+            const stripsContainer = document.getElementById('edit-strips-count-container');
+            if (selectedCategory.includes('أقراص') || selectedCategory.includes('كبسولات') || selectedCategory.includes('أفلام')) {
+                stripsContainer.style.display = 'flex';
+            } else {
+                stripsContainer.style.display = 'none';
+            }
+            
+            if (medicine.hasStock) {
+                document.getElementById('edit-stock-quantity-container').style.display = 'flex';
+                document.getElementById('edit-stock-quantity').value = medicine.stockQuantity;
+            } else {
+                document.getElementById('edit-stock-quantity-container').style.display = 'none';
+            }
+            
+            // عرض النافذة المنبثقة
+            document.getElementById('medicine-modal').classList.add('active');
+        }
+
+        function closeMedicineModal() {
+            document.getElementById('medicine-modal').classList.remove('active');
+            appState.currentMedicineId = null;
+        }
+
+        function updateMedicine(e) {
+            e.preventDefault();
+            
+            if (!appState.currentMedicineId) return;
+            
+            try {
+                const medicineIndex = appData.medicines.findIndex(m => m.id === appState.currentMedicineId);
+                if (medicineIndex === -1) {
+                    showMessage('لم يتم العثور على الدواء', 'error');
+                    return;
+                }
+                
+                const name = document.getElementById('edit-name').value.trim();
+                const activeIngredient = document.getElementById('edit-active-ingredient').value.trim();
+                const concentration = document.getElementById('edit-concentration').value.trim();
+                const categoryId = document.getElementById('edit-category').value;
+                const unitId = document.getElementById('edit-unit').value;
+                const price = parseFloat(document.getElementById('edit-price').value);
+                const expiryDate = document.getElementById('edit-expiry-date').value;
+                const requiredQuantity = safeParseInt(document.getElementById('edit-required-quantity').value);
+                const currentBoxes = safeParseInt(document.getElementById('edit-current-boxes').value);
+                const currentPieces = safeParseInt(document.getElementById('edit-current-pieces').value);
+                const minAlert = safeParseInt(document.getElementById('edit-min-alert').value);
+                const hasStock = document.getElementById('edit-has-stock').checked;
+                const isImportant = document.getElementById('edit-is-important').checked;
+                const stockQuantity = hasStock ? safeParseInt(document.getElementById('edit-stock-quantity').value) : 0;
+                const stripsCount = document.getElementById('edit-strips-count-container').style.display === 'flex' 
+                    ? safeParseInt(document.getElementById('edit-strips-count').value) 
+                    : 0;
+                
+                if (!name || !activeIngredient || !concentration || !categoryId || !unitId || !expiryDate || isNaN(price)) {
+                    showMessage('يرجى ملء جميع الحقول المطلوبة', 'error');
+                    return;
+                }
+                
+                // تحديث بيانات الدواء
+                appData.medicines[medicineIndex] = {
+                    ...appData.medicines[medicineIndex],
+                    name: name,
+                    activeIngredient: activeIngredient,
+                    concentration: concentration,
+                    categoryId: categoryId,
+                    unit: unitId,
+                    price: price,
+                    expiryDate: expiryDate,
+                    requiredQuantity: requiredQuantity,
+                    currentBoxes: currentBoxes,
+                    currentPieces: currentPieces,
+                    minAlert: minAlert,
+                    hasStock: hasStock,
+                    stockQuantity: stockQuantity,
+                    isImportant: isImportant,
+                    stripsCount: stripsCount
+                };
+                
+                saveData('medicines', appData.medicines);
+                
+                // تحديث الواجهة
+                loadMedicines();
+                updateStatistics();
+                loadDashboardData();
+                loadAlerts();
+                loadShortages();
+                
+                // إغلاق النافذة المنبثقة
+                closeMedicineModal();
+                
+                showMessage('تم تحديث الدواء بنجاح', 'success');
+                addNotification('تحديث دواء', `تم تحديث ${name}`, 'info');
+            } catch (error) {
+                console.error('خطأ في تحديث الدواء:', error);
+                showMessage('حدث خطأ أثناء تحديث الدواء', 'error');
+            }
+        }
+
+        function deleteMedicineFromModal() {
+            if (!appState.currentMedicineId) return;
+            
+            if (!confirm('هل أنت متأكد من حذف هذا الدواء؟')) return;
+            
+            try {
+                const medicineIndex = appData.medicines.findIndex(m => m.id === appState.currentMedicineId);
+                if (medicineIndex === -1) {
+                    showMessage('لم يتم العثور على الدواء', 'error');
+                    return;
+                }
+                
+                const medicineName = appData.medicines[medicineIndex].name;
+                appData.medicines.splice(medicineIndex, 1);
+                saveData('medicines', appData.medicines);
+                
+                // تحديث الواجهة
+                loadMedicines();
+                updateStatistics();
+                loadDashboardData();
+                loadAlerts();
+                loadShortages();
+                
+                // إغلاق النافذة المنبثقة
+                closeMedicineModal();
+                
+                showMessage('تم حذف الدواء بنجاح', 'success');
+                addNotification('حذف دواء', `تم حذف ${medicineName}`, 'warning');
+            } catch (error) {
+                console.error('خطأ في حذف الدواء:', error);
+                showMessage('حدث خطأ أثناء حذف الدواء', 'error');
+            }
+        }
+
+        function loadAlerts() {
+            const container = document.getElementById('alerts-list');
+            container.innerHTML = '';
+            
+            const today = new Date();
+            const alerts = [];
+            
+            appData.medicines.forEach(medicine => {
+                const expiryDate = new Date(medicine.expiryDate);
+                const daysUntilExpiry = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
+                
+                if (medicine.currentBoxes === 0 && medicine.currentPieces === 0) {
+                    alerts.push({
+                        type: 'danger',
+                        icon: 'times-circle',
+                        title: 'دواء نافذ',
+                        message: `${medicine.name} - الكمية نفذت تماماً`,
+                        medicineId: medicine.id
+                    });
+                } else if ((medicine.currentBoxes + medicine.currentPieces) <= medicine.minAlert) {
+                    alerts.push({
+                        type: 'warning',
+                        icon: 'exclamation-triangle',
+                        title: 'مخزون منخفض',
+                        message: `${medicine.name} - المخزون منخفض (${medicine.currentBoxes} علبة, ${medicine.currentPieces} قطعة متبقية)`,
+                        medicineId: medicine.id
+                    });
+                }
+                
+                if (expiryDate <= today) {
+                    alerts.push({
+                        type: 'danger',
+                        icon: 'calendar-times',
+                        title: 'دواء منتهي الصلاحية',
+                        message: `${medicine.name} - منتهي الصلاحية منذ ${Math.abs(daysUntilExpiry)} يوم`,
+                        medicineId: medicine.id
+                    });
+                } else if (daysUntilExpiry <= 7) {
+                    alerts.push({
+                        type: 'warning',
+                        icon: 'exclamation-circle',
+                        title: 'دواء قريب من الانتهاء',
+                        message: `${medicine.name} - ينتهي خلال ${daysUntilExpiry} يوم`,
+                        medicineId: medicine.id
+                    });
+                }
+            });
+            
+            if (alerts.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+                        <i class="fas fa-check-circle fa-2x" style="margin-bottom: 1rem; color: var(--success);"></i>
+                        <div>لا توجد تنبيهات</div>
+                        <small>جميع الأدوية في حالة جيدة</small>
+                    </div>
+                `;
+                return;
+            }
+            
+            alerts.forEach(alert => {
+                const alertElement = document.createElement('div');
+                alertElement.className = `alert alert-${alert.type}`;
+                alertElement.innerHTML = `
+                    <i class="fas fa-${alert.icon}"></i>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600; margin-bottom: 0.25rem;">${alert.title}</div>
+                        <div>${alert.message}</div>
+                    </div>
+                    <button class="btn btn-sm btn-outline" onclick="openMedicineModal('${alert.medicineId}')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                `;
+                container.appendChild(alertElement);
+            });
+        }
+
+        function loadShortages() {
+            const container = document.getElementById('shortages-list');
+            const expiredCount = document.getElementById('expired-count');
+            const lowStockCount = document.getElementById('low-stock-count');
+            const criticalCount = document.getElementById('critical-count');
+            
+            container.innerHTML = '';
+            
+            const today = new Date();
+            const expired = [];
+            const lowStock = [];
+            const critical = [];
+            
+            appData.medicines.forEach(medicine => {
+                const expiryDate = new Date(medicine.expiryDate);
+                const daysUntilExpiry = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
+                
+                if (expiryDate <= today) {
+                    expired.push(medicine);
+                } else if (medicine.currentBoxes === 0 && medicine.currentPieces === 0) {
+                    critical.push(medicine);
+                } else if ((medicine.currentBoxes + medicine.currentPieces) <= medicine.minAlert) {
+                    lowStock.push(medicine);
+                }
+            });
+            
+            // تحديث العدادات
+            expiredCount.textContent = `${expired.length} منتهي`;
+            lowStockCount.textContent = `${lowStock.length} منخفض`;
+            criticalCount.textContent = `${critical.length} حرج`;
+            
+            // دمج جميع النواقص
+            const allShortages = [...expired, ...critical, ...lowStock];
+            
+            if (allShortages.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+                        <i class="fas fa-check-circle fa-2x" style="margin-bottom: 1rem; color: var(--success);"></i>
+                        <div>لا توجد نواقص</div>
+                        <small>جميع الأدوية متوفرة ومتاحة</small>
+                    </div>
+                `;
+                return;
+            }
+            
+            allShortages.forEach(medicine => {
+                const expiryDate = new Date(medicine.expiryDate);
+                const daysUntilExpiry = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
+                
+                let status = 'success';
+                let statusText = 'جيد';
+                let icon = 'check-circle';
+                
+                if (medicine.currentBoxes === 0 && medicine.currentPieces === 0) {
+                    status = 'danger';
+                    statusText = 'نافذ';
+                    icon = 'times-circle';
+                } else if ((medicine.currentBoxes + medicine.currentPieces) <= medicine.minAlert) {
+                    status = 'warning';
+                    statusText = 'منخفض';
+                    icon = 'exclamation-triangle';
+                }
+                
+                if (expiryDate <= today) {
+                    status = 'danger';
+                    statusText = 'منتهي';
+                    icon = 'calendar-times';
+                }
+                
+                const shortageElement = document.createElement('div');
+                shortageElement.className = `medicine-card ${status === 'danger' ? 'expired' : status === 'warning' ? 'low-stock' : ''}`;
+                shortageElement.innerHTML = `
+                    <div class="medicine-status status-${status}">
+                        <i class="fas fa-${icon}"></i> ${statusText}
+                    </div>
+                    <div class="medicine-name">${medicine.name}</div>
+                    <div class="medicine-concentration">${medicine.concentration}</div>
+                    <div class="medicine-price">السعر: ${medicine.price} ريال</div>
+                    <div style="margin-top: 1rem; font-size: 0.9rem; color: var(--text-secondary);">
+                        <div>الكمية الحالية: ${medicine.currentBoxes} علبة, ${medicine.currentPieces} قطعة</div>
+                        <div>الحد الأدنى: ${medicine.minAlert}</div>
+                        ${expiryDate <= today ? 
+                            `<div>منتهي منذ: ${Math.abs(daysUntilExpiry)} يوم</div>` : 
+                            daysUntilExpiry <= 30 ? 
+                            `<div>ينتهي خلال: ${daysUntilExpiry} يوم</div>` : ''}
+                    </div>
+                `;
+                
+                shortageElement.addEventListener('click', function() {
+                    openMedicineModal(medicine.id);
+                });
+                
+                container.appendChild(shortageElement);
+            });
+        }
+
+        function filterShortages() {
+            const searchTerm = document.getElementById('shortage-search').value.toLowerCase();
+            const typeFilter = document.getElementById('shortage-type-filter').value;
+            const sortOption = document.getElementById('shortage-sort').value;
+            
+            const today = new Date();
+            let filteredShortages = appData.medicines.filter(medicine => {
+                const expiryDate = new Date(medicine.expiryDate);
+                const matchesSearch = medicine.name.toLowerCase().includes(searchTerm) || 
+                                    medicine.activeIngredient.toLowerCase().includes(searchTerm);
+                
+                let matchesType = false;
+                if (typeFilter === 'all') {
+                    matchesType = (expiryDate <= today) || 
+                                 (medicine.currentBoxes === 0 && medicine.currentPieces === 0) || 
+                                 ((medicine.currentBoxes + medicine.currentPieces) <= medicine.minAlert);
+                } else if (typeFilter === 'expired') {
+                    matchesType = expiryDate <= today;
+                } else if (typeFilter === 'low-stock') {
+                    matchesType = (medicine.currentBoxes + medicine.currentPieces) <= medicine.minAlert;
+                } else if (typeFilter === 'critical') {
+                    matchesType = medicine.currentBoxes === 0 && medicine.currentPieces === 0;
+                }
+                
+                return matchesSearch && matchesType;
+            });
+            
+            // تطبيق الترتيب
+            filteredShortages.sort((a, b) => {
+                const aExpiry = new Date(a.expiryDate);
+                const bExpiry = new Date(b.expiryDate);
+                const aQuantity = a.currentBoxes + a.currentPieces;
+                const bQuantity = b.currentBoxes + b.currentPieces;
+                
+                switch (sortOption) {
+                    case 'severity':
+                        // تحديد مستوى الخطورة
+                        const aSeverity = aExpiry <= today ? 3 : (aQuantity === 0 ? 2 : (aQuantity <= a.minAlert ? 1 : 0));
+                        const bSeverity = bExpiry <= today ? 3 : (bQuantity === 0 ? 2 : (bQuantity <= b.minAlert ? 1 : 0));
+                        return bSeverity - aSeverity;
+                    case 'name':
+                        return a.name.localeCompare(b.name);
+                    case 'quantity':
+                        return aQuantity - bQuantity;
+                    case 'expiry':
+                        return aExpiry - bExpiry;
+                    default:
+                        return 0;
+                }
+            });
+            
+            // عرض النتائج
+            const container = document.getElementById('shortages-list');
+            container.innerHTML = '';
+            
+            if (filteredShortages.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+                        <i class="fas fa-check-circle fa-2x" style="margin-bottom: 1rem; color: var(--success);"></i>
+                        <div>لا توجد نواقص تطابق البحث</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            filteredShortages.forEach(medicine => {
+                const expiryDate = new Date(medicine.expiryDate);
+                const daysUntilExpiry = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
+                
+                let status = 'success';
+                let statusText = 'جيد';
+                let icon = 'check-circle';
+                
+                if (medicine.currentBoxes === 0 && medicine.currentPieces === 0) {
+                    status = 'danger';
+                    statusText = 'نافذ';
+                    icon = 'times-circle';
+                } else if ((medicine.currentBoxes + medicine.currentPieces) <= medicine.minAlert) {
+                    status = 'warning';
+                    statusText = 'منخفض';
+                    icon = 'exclamation-triangle';
+                }
+                
+                if (expiryDate <= today) {
+                    status = 'danger';
+                    statusText = 'منتهي';
+                    icon = 'calendar-times';
+                }
+                
+                const shortageElement = document.createElement('div');
+                shortageElement.className = `medicine-card ${status === 'danger' ? 'expired' : status === 'warning' ? 'low-stock' : ''}`;
+                shortageElement.innerHTML = `
+                    <div class="medicine-status status-${status}">
+                        <i class="fas fa-${icon}"></i> ${statusText}
+                    </div>
+                    <div class="medicine-name">${medicine.name}</div>
+                    <div class="medicine-concentration">${medicine.concentration}</div>
+                    <div class="medicine-price">السعر: ${medicine.price} ريال</div>
+                    <div style="margin-top: 1rem; font-size: 0.9rem; color: var(--text-secondary);">
+                        <div>الكمية الحالية: ${medicine.currentBoxes} علبة, ${medicine.currentPieces} قطعة</div>
+                        <div>الحد الأدنى: ${medicine.minAlert}</div>
+                        ${expiryDate <= today ? 
+                            `<div>منتهي منذ: ${Math.abs(daysUntilExpiry)} يوم</div>` : 
+                            daysUntilExpiry <= 30 ? 
+                            `<div>ينتهي خلال: ${daysUntilExpiry} يوم</div>` : ''}
+                    </div>
+                `;
+                
+                shortageElement.addEventListener('click', function() {
+                    openMedicineModal(medicine.id);
+                });
+                
+                container.appendChild(shortageElement);
+            });
+        }
+
+        function setupToggleSwitches() {
+            // إعداد أزرار التبديل الافتراضية
+            document.querySelectorAll('.toggle-input').forEach(toggle => {
+                toggle.addEventListener('change', function() {
+                    const container = this.closest('.toggle-group');
+                    if (container) {
+                        container.classList.toggle('active', this.checked);
+                    }
+                });
+            });
+        }
+
+        function applySettings() {
+            try {
+                const fontSize = document.getElementById('font-size').value;
+                const theme = document.getElementById('theme').value;
+                const enableNotifications = document.getElementById('enable-notifications').checked;
+                const showSpecificChar = document.getElementById('show-specific-char').checked;
+                const onlineMode = document.getElementById('online-mode').checked;
+                
+                // تطبيق حجم الخط
+                document.body.style.fontSize = fontSize;
+                
+                // تطبيق الثيم
+                applyTheme(theme);
+                
+                // حفظ الإعدادات
+                appData.settings = {
+                    fontSize: fontSize,
+                    theme: theme,
+                    notifications: enableNotifications,
+                    offlineMode: !onlineMode,
+                    showSpecificChar: showSpecificChar
+                };
+                
+                saveData('settings', appData.settings);
+                
+                // تحديث مؤشر الاتصال
+                setupConnectionIndicator();
+                
+                showMessage('تم تطبيق الإعدادات بنجاح', 'success');
+                addNotification('تحديث الإعدادات', 'تم تحديث إعدادات النظام', 'info');
+            } catch (error) {
+                console.error('خطأ في تطبيق الإعدادات:', error);
+                showMessage('حدث خطأ أثناء تطبيق الإعدادات', 'error');
+            }
+        }
+
+        function addSampleData() {
+            try {
+                if (!confirm('هل تريد إضافة بيانات تجريبية؟ سيتم إضافة 10 أدوية عشوائية.')) return;
+                
+                const sampleMedicines = [
+                    {
+                        name: 'باراسيتامول',
+                        activeIngredient: 'باراسيتامول',
+                        concentration: '500 ملغ',
+                        categoryId: '5', // أقراص
+                        unit: '1', // قرص
+                        price: 15.5,
+                        expiryDate: '2025-12-31',
+                        requiredQuantity: 100,
+                        currentBoxes: 5,
+                        currentPieces: 20,
+                        minAlert: 20,
+                        hasStock: true,
+                        stockQuantity: 200,
+                        isImportant: true,
+                        stripsCount: 10
+                    },
+                    {
+                        name: 'أموكسيسيلين',
+                        activeIngredient: 'أموكسيسيلين',
+                        concentration: '250 ملغ',
+                        categoryId: '2', // مضادات حيوية
+                        unit: '4', // شريط
+                        price: 25.0,
+                        expiryDate: '2024-06-30',
+                        requiredQuantity: 80,
+                        currentBoxes: 2,
+                        currentPieces: 5,
+                        minAlert: 15,
+                        hasStock: true,
+                        stockQuantity: 50,
+                        isImportant: false,
+                        stripsCount: 0
+                    },
+                    {
+                        name: 'فيتامين سي',
+                        activeIngredient: 'حمض الأسكوربيك',
+                        concentration: '1000 ملغ',
+                        categoryId: '3', // فيتامينات
+                        unit: '3', // علبة
+                        price: 35.0,
+                        expiryDate: '2025-03-15',
+                        requiredQuantity: 50,
+                        currentBoxes: 1,
+                        currentPieces: 0,
+                        minAlert: 10,
+                        hasStock: false,
+                        stockQuantity: 0,
+                        isImportant: false,
+                        stripsCount: 0
+                    }
+                ];
+                
+                sampleMedicines.forEach(medicine => {
+                    const newMedicine = {
+                        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                        ...medicine,
+                        createdAt: new Date().toISOString()
+                    };
+                    appData.medicines.push(newMedicine);
+                });
+                
+                saveData('medicines', appData.medicines);
+                
+                // تحديث جميع الأقسام
+                loadMedicines();
+                updateStatistics();
+                loadDashboardData();
+                loadAlerts();
+                loadShortages();
+                
+                showMessage('تم إضافة البيانات التجريبية بنجاح', 'success');
+                addNotification('بيانات تجريبية', 'تم إضافة 3 أدوية تجريبية', 'info');
+            } catch (error) {
+                console.error('خطأ في إضافة البيانات التجريبية:', error);
+                showMessage('حدث خطأ أثناء إضافة البيانات التجريبية', 'error');
+            }
+        }
+
+        function clearData() {
+            try {
+                if (!confirm('هل أنت متأكد من مسح جميع البيانات؟ لا يمكن التراجع عن هذا الإجراء.')) return;
+                
+                appData.medicines = [];
+                appData.categories = [
+                    { id: '1', name: 'مسكنات', color: '#4361ee' },
+                    { id: '2', name: 'مضادات حيوية', color: '#4cc9f0' },
+                    { id: '3', name: 'فيتامينات', color: '#f72585' },
+                    { id: '4', name: 'أدوية مزمنة', color: '#7209b7' },
+                    { id: '5', name: 'أقراص', color: '#3a0ca3' },
+                    { id: '6', name: 'كبسولات', color: '#4ea8de' },
+                    { id: '7', name: 'أفلام', color: '#560bad' }
+                ];
+                appData.units = [
+                    { id: '1', name: 'قرص', symbol: 'قرص' },
+                    { id: '2', name: 'زجاجة', symbol: 'زجاجة' },
+                    { id: '3', name: 'علبة', symbol: 'علبة' },
+                    { id: '4', name: 'شريط', symbol: 'شريط' },
+                    { id: '5', name: 'أنبوبة', symbol: 'أنبوبة' },
+                    { id: '6', name: 'أمبولة', symbol: 'أمبولة' },
+                    { id: '7', name: 'محقن', symbol: 'محقن' }
+                ];
+                appData.notifications = [];
+                
+                saveData('medicines', appData.medicines);
+                saveData('categories', appData.categories);
+                saveData('units', appData.units);
+                saveData('notifications', appData.notifications);
+                
+                // تحديث جميع الأقسام
+                loadMedicines();
+                loadCategories();
+                loadUnits();
+                loadNotifications();
+                updateStatistics();
+                loadDashboardData();
+                loadAlerts();
+                loadShortages();
+                
+                showMessage('تم مسح جميع البيانات بنجاح', 'success');
+                addNotification('مسح البيانات', 'تم مسح جميع بيانات النظام', 'warning');
+            } catch (error) {
+                console.error('خطأ في مسح البيانات:', error);
+                showMessage('حدث خطأ أثناء مسح البيانات', 'error');
+            }
+        }
+
+        function saveData(key, data) {
+            try {
+                localStorage.setItem(`ahmos_${key}`, JSON.stringify(data));
+                
+                // عرض مؤشر الحفظ
+                showAutoSaveIndicator();
+            } catch (error) {
+                console.error('خطأ في حفظ البيانات:', error);
+                showMessage('حدث خطأ أثناء حفظ البيانات', 'error');
+            }
+        }
+
+        function showAutoSaveIndicator() {
+            const indicator = document.getElementById('auto-save-indicator');
+            indicator.style.display = 'flex';
+            
+            setTimeout(() => {
+                indicator.style.animation = 'slideOutRight 0.3s ease';
+                setTimeout(() => {
+                    indicator.style.display = 'none';
+                    indicator.style.animation = '';
+                }, 300);
+            }, 2000);
+        }
+
+        function showMessage(message, type) {
+            const messageDiv = document.getElementById('form-message');
+            messageDiv.className = `alert alert-${type}`;
+            messageDiv.innerHTML = `
+                <i class="fas fa-${getIconByType(type)}"></i>
+                <span>${message}</span>
+            `;
+            messageDiv.style.display = 'flex';
+            
+            setTimeout(() => {
+                messageDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        function formatTime(timestamp) {
+            const date = new Date(timestamp);
+            const now = new Date();
+            const diffMs = now - date;
+            const diffMins = Math.floor(diffMs / 60000);
+            const diffHours = Math.floor(diffMs / 3600000);
+            const diffDays = Math.floor(diffMs / 86400000);
+            
+            if (diffMins < 1) return 'الآن';
+            if (diffMins < 60) return `قبل ${diffMins} دقيقة`;
+            if (diffHours < 24) return `قبل ${diffHours} ساعة`;
+            if (diffDays < 7) return `قبل ${diffDays} يوم`;
+            
+            return date.toLocaleDateString('ar');
+        }
+
+        function safeParseInt(value) {
+            if (typeof value === 'number') return value;
+            if (typeof value === 'string') {
+                const parsed = parseInt(value.replace(/\D/g, ''));
+                return isNaN(parsed) ? 0 : parsed;
+            }
+            return 0;
+        }
+
+        // دوال الاستيراد والتصدير المحسنة
+        function exportMedicinesToExcel() {
+            try {
+                // التحقق من وجود مكتبة XLSX
+                if (typeof XLSX === 'undefined') {
+                    showMessage('مكتبة التصدير غير متوفرة. يرجى التأكد من تحميل المكتبة.', 'error');
+                    return;
+                }
+                
+                // تحضير البيانات للتصدير
+                const exportData = appData.medicines.map(medicine => {
+                    const category = appData.categories.find(c => c.id === medicine.categoryId);
+                    const unit = appData.units.find(u => u.id === medicine.unit);
+                    
+                    return {
+                        'اسم الدواء': medicine.name,
+                        'المادة الفعالة': medicine.activeIngredient,
+                        'التركيز': medicine.concentration,
+                        'التصنيف': category ? category.name : '',
+                        'وحدة القياس': unit ? unit.symbol : '',
+                        'السعر': medicine.price,
+                        'تاريخ الصلاحية': medicine.expiryDate,
+                        'الكمية المطلوبة': medicine.requiredQuantity,
+                        'عدد العلب': medicine.currentBoxes,
+                        'عدد الأجزاء': medicine.currentPieces,
+                        'الحد الأدنى للإنذار': medicine.minAlert,
+                        'عدد الشرايط': medicine.stripsCount || 0,
+                        'متوفر منه مخزون': medicine.hasStock ? 'نعم' : 'لا',
+                        'كمية المخزون': medicine.stockQuantity,
+                        'حالة الصنف مهم': medicine.isImportant ? 'نعم' : 'لا',
+                        'تاريخ الإنشاء': new Date(medicine.createdAt).toLocaleDateString('ar-EG')
+                    };
+                });
+                
+                const worksheet = XLSX.utils.json_to_sheet(exportData);
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, 'الأدوية');
+                XLSX.writeFile(workbook, `أدوية_الصيدلية_${new Date().toISOString().split('T')[0]}.xlsx`);
+                showMessage('تم تصدير الأدوية بنجاح', 'success');
+                addNotification('تصدير الأدوية', 'تم تصدير جميع الأدوية إلى ملف Excel', 'success');
+            } catch (error) {
+                console.error('خطأ في تصدير الأدوية:', error);
+                showMessage('حدث خطأ أثناء تصدير الأدوية', 'error');
+            }
+        }
+
+        function importMedicinesFromExcel(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                    
+                    let importedCount = 0;
+                    let skippedCount = 0;
+                    
+                    // إضافة الأدوية المستوردة
+                    jsonData.forEach(item => {
+                        try {
+                            // البحث عن التصنيف أو إنشاؤه إذا لم يكن موجوداً
+                            let categoryId = findOrCreateCategory(item['التصنيف'] || item['category'] || '');
+                            
+                            // البحث عن وحدة القياس أو إنشاؤها إذا لم تكن موجودة
+                            let unitId = findOrCreateUnit(item['وحدة القياس'] || item['unit'] || '');
+                            
+                            const newMedicine = {
+                                id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                                name: item['اسم الدواء'] || item['name'] || '',
+                                activeIngredient: item['المادة الفعالة'] || item['activeIngredient'] || '',
+                                concentration: item['التركيز'] || item['concentration'] || '',
+                                categoryId: categoryId,
+                                unit: unitId,
+                                price: parseFloat(item['السعر'] || item['price'] || 0),
+                                expiryDate: item['تاريخ الصلاحية'] || item['expiryDate'] || '',
+                                requiredQuantity: safeParseInt(item['الكمية المطلوبة'] || item['requiredQuantity'] || 0),
+                                currentBoxes: safeParseInt(item['عدد العلب'] || item['currentBoxes'] || 0),
+                                currentPieces: safeParseInt(item['عدد الأجزاء'] || item['currentPieces'] || 0),
+                                minAlert: safeParseInt(item['الحد الأدنى للإنذار'] || item['minAlert'] || 0),
+                                hasStock: Boolean(item['متوفر منه مخزون'] === 'نعم' || item['hasStock'] || false),
+                                stockQuantity: safeParseInt(item['كمية المخزون'] || item['stockQuantity'] || 0),
+                                isImportant: Boolean(item['حالة الصنف مهم'] === 'نعم' || item['isImportant'] || false),
+                                stripsCount: safeParseInt(item['عدد الشرايط'] || item['stripsCount'] || 0),
+                                createdAt: new Date().toISOString()
+                            };
+                            
+                            // التحقق من صحة البيانات الأساسية
+                            if (!newMedicine.name || !newMedicine.activeIngredient || !newMedicine.concentration) {
+                                skippedCount++;
+                                return;
+                            }
+                            
+                            appData.medicines.push(newMedicine);
+                            importedCount++;
+                        } catch (error) {
+                            console.error('خطأ في معالجة سجل الدواء:', error);
+                            skippedCount++;
+                        }
+                    });
+                    
+                    saveData('medicines', appData.medicines);
+                    
+                    // تحديث الواجهة
+                    loadMedicines();
+                    updateStatistics();
+                    loadDashboardData();
+                    loadAlerts();
+                    loadShortages();
+                    
+                    let message = `تم استيراد ${importedCount} دواء بنجاح`;
+                    if (skippedCount > 0) {
+                        message += ` وتم تخطي ${skippedCount} سجل بسبب أخطاء في البيانات`;
+                    }
+                    
+                    showMessage(message, 'success');
+                    addNotification('استيراد أدوية', `تم استيراد ${importedCount} دواء من ملف Excel`, 'success');
+                    
+                    // إعادة تعيين حقل الملف
+                    event.target.value = '';
+                } catch (error) {
+                    console.error('خطأ في استيراد الأدوية:', error);
+                    showMessage('حدث خطأ أثناء استيراد الأدوية. يرجى التأكد من صحة تنسيق الملف.', 'error');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function exportStatisticsToExcel() {
+            try {
+                const statistics = [{
+                    'إجمالي الأدوية': appData.medicines.length,
+                    'الأدوية المنتهية': appData.medicines.filter(m => new Date(m.expiryDate) <= new Date()).length,
+                    'الأدوية منخفضة المخزون': appData.medicines.filter(m => (m.currentBoxes + m.currentPieces) <= m.minAlert).length,
+                    'عدد التصنيفات': appData.categories.length,
+                    'عدد وحدات القياس': appData.units.length,
+                    'التاريخ': new Date().toLocaleDateString('ar-EG')
+                }];
+                
+                const worksheet = XLSX.utils.json_to_sheet(statistics);
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, 'الإحصائيات');
+                XLSX.writeFile(workbook, `إحصائيات_الصيدلية_${new Date().toISOString().split('T')[0]}.xlsx`);
+                showMessage('تم تصدير الإحصائيات بنجاح', 'success');
+                addNotification('تصدير الإحصائيات', 'تم تصدير إحصائيات الصيدلية إلى ملف Excel', 'info');
+            } catch (error) {
+                console.error('خطأ في تصدير الإحصائيات:', error);
+                showMessage('حدث خطأ أثناء تصدير الإحصائيات', 'error');
+            }
+        }
+
+        function exportCategoriesToExcel() {
+            try {
+                const categoriesWithCount = appData.categories.map(category => {
+                    const medicinesCount = appData.medicines.filter(m => m.categoryId === category.id).length;
+                    return {
+                        'اسم التصنيف': category.name,
+                        'اللون': category.color,
+                        'عدد الأدوية': medicinesCount
+                    };
+                });
+                
+                const worksheet = XLSX.utils.json_to_sheet(categoriesWithCount);
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, 'التصنيفات');
+                XLSX.writeFile(workbook, `تصنيفات_الصيدلية_${new Date().toISOString().split('T')[0]}.xlsx`);
+                showMessage('تم تصدير التصنيفات بنجاح', 'success');
+                addNotification('تصدير التصنيفات', 'تم تصدير جميع التصنيفات إلى ملف Excel', 'success');
+            } catch (error) {
+                console.error('خطأ في تصدير التصنيفات:', error);
+                showMessage('حدث خطأ أثناء تصدير التصنيفات', 'error');
+            }
+        }
+
+        function importCategoriesFromExcel(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                    
+                    let importedCount = 0;
+                    
+                    // إضافة التصنيفات المستوردة
+                    jsonData.forEach(item => {
+                        const newCategory = {
+                            id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                            name: item['اسم التصنيف'] || item['name'] || '',
+                            color: item['اللون'] || item['color'] || '#4361ee'
+                        };
+                        
+                        // التحقق من عدم وجود تصنيف بنفس الاسم
+                        const existingCategory = appData.categories.find(c => c.name === newCategory.name);
+                        if (!existingCategory) {
+                            appData.categories.push(newCategory);
+                            importedCount++;
+                        }
+                    });
+                    
+                    saveData('categories', appData.categories);
+                    loadCategories();
+                    loadCategoryOptions();
+                    
+                    showMessage(`تم استيراد ${importedCount} تصنيف بنجاح`, 'success');
+                    addNotification('استيراد تصنيفات', `تم استيراد ${importedCount} تصنيف من ملف Excel`, 'success');
+                    
+                    // إعادة تعيين حقل الملف
+                    event.target.value = '';
+                } catch (error) {
+                    console.error('خطأ في استيراد التصنيفات:', error);
+                    showMessage('حدث خطأ أثناء استيراد التصنيفات. يرجى التأكد من صحة تنسيق الملف.', 'error');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function exportUnitsToExcel() {
+            try {
+                const unitsWithCount = appData.units.map(unit => {
+                    const medicinesCount = appData.medicines.filter(m => m.unit === unit.id).length;
+                    return {
+                        'اسم الوحدة': unit.name,
+                        'الرمز': unit.symbol,
+                        'عدد الأدوية': medicinesCount
+                    };
+                });
+                
+                const worksheet = XLSX.utils.json_to_sheet(unitsWithCount);
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, 'وحدات القياس');
+                XLSX.writeFile(workbook, `وحدات_القياس_${new Date().toISOString().split('T')[0]}.xlsx`);
+                showMessage('تم تصدير وحدات القياس بنجاح', 'success');
+                addNotification('تصدير وحدات القياس', 'تم تصدير جميع وحدات القياس إلى ملف Excel', 'success');
+            } catch (error) {
+                console.error('خطأ في تصدير وحدات القياس:', error);
+                showMessage('حدث خطأ أثناء تصدير وحدات القياس', 'error');
+            }
+        }
+
+        function importUnitsFromExcel(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                    
+                    let importedCount = 0;
+                    
+                    // إضافة وحدات القياس المستوردة
+                    jsonData.forEach(item => {
+                        const newUnit = {
+                            id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                            name: item['اسم الوحدة'] || item['name'] || '',
+                            symbol: item['الرمز'] || item['symbol'] || ''
+                        };
+                        
+                        // التحقق من عدم وجود وحدة بنفس الاسم أو الرمز
+                        const existingUnit = appData.units.find(u => u.name === newUnit.name || u.symbol === newUnit.symbol);
+                        if (!existingUnit) {
+                            appData.units.push(newUnit);
+                            importedCount++;
+                        }
+                    });
+                    
+                    saveData('units', appData.units);
+                    loadUnits();
+                    loadUnitOptions();
+                    
+                    showMessage(`تم استيراد ${importedCount} وحدة قياس بنجاح`, 'success');
+                    addNotification('استيراد وحدات قياس', `تم استيراد ${importedCount} وحدة قياس من ملف Excel`, 'success');
+                    
+                    // إعادة تعيين حقل الملف
+                    event.target.value = '';
+                } catch (error) {
+                    console.error('خطأ في استيراد وحدات القياس:', error);
+                    showMessage('حدث خطأ أثناء استيراد وحدات القياس. يرجى التأكد من صحة تنسيق الملف.', 'error');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function exportAlertsToExcel() {
+            try {
+                const alerts = [];
+                const today = new Date();
+                
+                appData.medicines.forEach(medicine => {
+                    const expiryDate = new Date(medicine.expiryDate);
+                    const daysUntilExpiry = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
+                    
+                    if (medicine.currentBoxes === 0 && medicine.currentPieces === 0) {
+                        alerts.push({
+                            'نوع التنبيه': 'دواء نافذ',
+                            'اسم الدواء': medicine.name,
+                            'التركيز': medicine.concentration,
+                            'الكمية الحالية': `${medicine.currentBoxes} علبة, ${medicine.currentPieces} قطعة`,
+                            'الحد الأدنى': medicine.minAlert,
+                            'تاريخ الإنشاء': new Date().toLocaleDateString('ar-EG')
+                        });
+                    } else if ((medicine.currentBoxes + medicine.currentPieces) <= medicine.minAlert) {
+                        alerts.push({
+                            'نوع التنبيه': 'مخزون منخفض',
+                            'اسم الدواء': medicine.name,
+                            'التركيز': medicine.concentration,
+                            'الكمية الحالية': `${medicine.currentBoxes} علبة, ${medicine.currentPieces} قطعة`,
+                            'الحد الأدنى': medicine.minAlert,
+                            'تاريخ الإنشاء': new Date().toLocaleDateString('ar-EG')
+                        });
+                    }
+                    
+                    if (expiryDate <= today) {
+                        alerts.push({
+                            'نوع التنبيه': 'منتهي الصلاحية',
+                            'اسم الدواء': medicine.name,
+                            'التركيز': medicine.concentration,
+                            'تاريخ الصلاحية': medicine.expiryDate,
+                            'الأيام منذ الانتهاء': Math.abs(daysUntilExpiry),
+                            'تاريخ الإنشاء': new Date().toLocaleDateString('ar-EG')
+                        });
+                    } else if (daysUntilExpiry <= 7) {
+                        alerts.push({
+                            'نوع التنبيه': 'قريب من الانتهاء',
+                            'اسم الدواء': medicine.name,
+                            'التركيز': medicine.concentration,
+                            'تاريخ الصلاحية': medicine.expiryDate,
+                            'الأيام المتبقية': daysUntilExpiry,
+                            'تاريخ الإنشاء': new Date().toLocaleDateString('ar-EG')
+                        });
+                    }
+                });
+                
+                if (alerts.length === 0) {
+                    showMessage('لا توجد تنبيهات لتصديرها', 'info');
+                    return;
+                }
+                
+                const worksheet = XLSX.utils.json_to_sheet(alerts);
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, 'التنبيهات');
+                XLSX.writeFile(workbook, `تنبيهات_الصيدلية_${new Date().toISOString().split('T')[0]}.xlsx`);
+                showMessage('تم تصدير التنبيهات بنجاح', 'success');
+                addNotification('تصدير التنبيهات', 'تم تصدير جميع التنبيهات إلى ملف Excel', 'info');
+            } catch (error) {
+                console.error('خطأ في تصدير التنبيهات:', error);
+                showMessage('حدث خطأ أثناء تصدير التنبيهات', 'error');
+            }
+        }
+
+        function exportShortagesToExcel() {
+            try {
+                const shortages = [];
+                const today = new Date();
+                
+                appData.medicines.forEach(medicine => {
+                    const expiryDate = new Date(medicine.expiryDate);
+                    const daysUntilExpiry = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
+                    
+                    if (expiryDate <= today) {
+                        shortages.push({
+                            'نوع النقص': 'منتهي الصلاحية',
+                            'اسم الدواء': medicine.name,
+                            'التركيز': medicine.concentration,
+                            'تاريخ الصلاحية': medicine.expiryDate,
+                            'الأيام منذ الانتهاء': Math.abs(daysUntilExpiry),
+                            'الكمية الحالية': `${medicine.currentBoxes} علبة, ${medicine.currentPieces} قطعة`,
+                            'الحد الأدنى': medicine.minAlert
+                        });
+                    } else if (medicine.currentBoxes === 0 && medicine.currentPieces === 0) {
+                        shortages.push({
+                            'نوع النقص': 'نافذ',
+                            'اسم الدواء': medicine.name,
+                            'التركيز': medicine.concentration,
+                            'الكمية الحالية': `${medicine.currentBoxes} علبة, ${medicine.currentPieces} قطعة`,
+                            'الحد الأدنى': medicine.minAlert,
+                            'تاريخ الصلاحية': medicine.expiryDate
+                        });
+                    } else if ((medicine.currentBoxes + medicine.currentPieces) <= medicine.minAlert) {
+                        shortages.push({
+                            'نوع النقص': 'منخفض',
+                            'اسم الدواء': medicine.name,
+                            'التركيز': medicine.concentration,
+                            'الكمية الحالية': `${medicine.currentBoxes} علبة, ${medicine.currentPieces} قطعة`,
+                            'الحد الأدنى': medicine.minAlert,
+                            'تاريخ الصلاحية': medicine.expiryDate
+                        });
+                    }
+                });
+                
+                if (shortages.length === 0) {
+                    showMessage('لا توجد نواقص لتصديرها', 'info');
+                    return;
+                }
+                
+                const worksheet = XLSX.utils.json_to_sheet(shortages);
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, 'النواقص');
+                XLSX.writeFile(workbook, `نواقص_الصيدلية_${new Date().toISOString().split('T')[0]}.xlsx`);
+                showMessage('تم تصدير النواقص بنجاح', 'success');
+                addNotification('تصدير النواقص', 'تم تصدير جميع النواقص إلى ملف Excel', 'info');
+            } catch (error) {
+                console.error('خطأ في تصدير النواقص:', error);
+                showMessage('حدث خطأ أثناء تصدير النواقص', 'error');
+            }
+        }
+
+        // دوال مساعدة للاستيراد والتصدير
+        function findOrCreateCategory(categoryName) {
+            if (!categoryName) return appData.categories[0].id;
+            
+            const existingCategory = appData.categories.find(c => c.name === categoryName);
+            if (existingCategory) return existingCategory.id;
+            
+            const newCategory = {
+                id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                name: categoryName,
+                color: generateRandomColor()
+            };
+            
+            appData.categories.push(newCategory);
+            saveData('categories', appData.categories);
+            return newCategory.id;
+        }
+
+        function findOrCreateUnit(unitName) {
+            if (!unitName) return appData.units[0].id;
+            
+            const existingUnit = appData.units.find(u => u.name === unitName || u.symbol === unitName);
+            if (existingUnit) return existingUnit.id;
+            
+            const newUnit = {
+                id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                name: unitName,
+                symbol: unitName
+            };
+            
+            appData.units.push(newUnit);
+            saveData('units', appData.units);
+            return newUnit.id;
+        }
+
+        function generateRandomColor() {
+            const colors = ['#4361ee', '#4cc9f0', '#f72585', '#7209b7', '#3a0ca3', '#4ea8de', '#560bad', '#b5179e'];
+            return colors[Math.floor(Math.random() * colors.length)];
+        }
+
+        // دوال إضافية للتحرير والحذف
+        function editCategory(categoryId) {
+            const category = appData.categories.find(c => c.id === categoryId);
+            if (!category) return;
+            
+            const newName = prompt('أدخل الاسم الجديد للتصنيف:', category.name);
+            if (!newName || newName.trim() === '') return;
+            
+            category.name = newName.trim();
+            saveData('categories', appData.categories);
+            loadCategories();
+            loadCategoryOptions();
+            
+            showMessage('تم تعديل التصنيف بنجاح', 'success');
+        }
+
+        function deleteCategory(categoryId) {
+            const category = appData.categories.find(c => c.id === categoryId);
+            if (!category) return;
+            
+            const medicinesCount = appData.medicines.filter(m => m.categoryId === categoryId).length;
+            if (medicinesCount > 0) {
+                showMessage('لا يمكن حذف التصنيف لأنه مرتبط بأدوية', 'error');
+                return;
+            }
+            
+            if (!confirm(`هل أنت متأكد من حذف التصنيف "${category.name}"؟`)) return;
+            
+            appData.categories = appData.categories.filter(c => c.id !== categoryId);
+            saveData('categories', appData.categories);
+            loadCategories();
+            loadCategoryOptions();
+            
+            showMessage('تم حذف التصنيف بنجاح', 'success');
+        }
+
+        function editUnit(unitId) {
+            const unit = appData.units.find(u => u.id === unitId);
+            if (!unit) return;
+            
+            const newName = prompt('أدخل الاسم الجديد للوحدة:', unit.name);
+            if (!newName || newName.trim() === '') return;
+            
+            const newSymbol = prompt('أدخل الرمز الجديد للوحدة:', unit.symbol);
+            if (!newSymbol || newSymbol.trim() === '') return;
+            
+            unit.name = newName.trim();
+            unit.symbol = newSymbol.trim();
+            saveData('units', appData.units);
+            loadUnits();
+            loadUnitOptions();
+            
+            showMessage('تم تعديل وحدة القياس بنجاح', 'success');
+        }
+
+        function deleteUnit(unitId) {
+            const unit = appData.units.find(u => u.id === unitId);
+            if (!unit) return;
+            
+            const medicinesCount = appData.medicines.filter(m => m.unit === unitId).length;
+            if (medicinesCount > 0) {
+                showMessage('لا يمكن حذف وحدة القياس لأنها مرتبطة بأدوية', 'error');
+                return;
+            }
+            
+            if (!confirm(`هل أنت متأكد من حذف وحدة القياس "${unit.name}"؟`)) return;
+            
+            appData.units = appData.units.filter(u => u.id !== unitId);
+            saveData('units', appData.units);
+            loadUnits();
+            loadUnitOptions();
+            
+            showMessage('تم حذف وحدة القياس بنجاح', 'success');
+        }
+    </script>
+</body>
+</html>
